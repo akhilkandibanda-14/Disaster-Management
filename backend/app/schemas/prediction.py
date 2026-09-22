@@ -4,17 +4,22 @@ from pydantic import BaseModel, Field
 
 
 class PredictionRequest(BaseModel):
-    latitude: float = Field(ge=-90, le=90)
-    longitude: float = Field(ge=-180, le=180)
-    rainfall: float = Field(ge=0)
+    latitude: float
+    longitude: float
+    rainfall: float
     temperature: float
-    humidity: float = Field(ge=0, le=100)
-    water_level: float = Field(ge=0)
+    humidity: float
+    river_discharge: float
+    water_level: float
     elevation: float
+    land_cover: str
+    soil_type: str
+    population_density: float
+    infrastructure: float
+    historical_floods: float
 
-
-class PredictionResponse(PredictionRequest):
-    flood_probability: float = Field(ge=0, le=1)
+class PredictionResponse(BaseModel):
+    prediction: int
+    flood_probability: float
     risk_level: str
     source: str
-    timestamp: datetime

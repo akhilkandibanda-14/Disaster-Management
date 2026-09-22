@@ -33,38 +33,50 @@ def clear_model_cache() -> None:
     load_model.cache_clear()
 
 
-def predict(features: dict[str, Any]) -> tuple[float, str]:
+import pandas as pd
+
+def predict(features: dict[str, Any]) -> dict[str, Any]:
     _ensure_ml_package_path()
-    from ml.predict import classify_risk, predict_probability
+    from ml.predict import load_artifact
 
     artifact = load_model()
     cols = artifact.get("feature_columns", [])
     
     if len(cols) >= 13:
-        mapped_features = {
-            cols[0]: features.get("latitude", 17.385),
-            cols[1]: features.get("longitude", 78.486),
-            cols[2]: features.get("rainfall", 0.0),
-            cols[3]: features.get("temperature", 30.0),
-            cols[4]: features.get("humidity", 50.0),
-            cols[5]: 1000.0,  # River Discharge
-            cols[6]: features.get("water_level", 5.0),
-            cols[7]: features.get("elevation", 500.0),
-            cols[8]: "Urban", # Land Cover
-            cols[9]: "Clay",  # Soil Type
-            cols[10]: 5000.0, # Population Density
-            cols[11]: 1.0,    # Infrastructure
-            cols[12]: 0.0     # Historical Floods
+        row = {
+            cols[0]: features.get("latitude"),
+            cols[1]: features.get("longitude"),
+            cols[2]: features.get("rainfall"),
+            cols[3]: features.get("temperature"),
+            cols[4]: features.get("humidity"),
+            cols[5]: features.get("river_discharge"),
+            cols[6]: features.get("water_level"),
+            cols[7]: features.get("elevation"),
+            cols[8]: features.get("land_cover"),
+            cols[9]: features.get("soil_type"),
+            cols[10]: features.get("population_density"),
+            cols[11]: features.get("infrastructure"),
+            cols[12]: features.get("historical_floods")
         }
     else:
-        mapped_features = features
+        raise ValueError("Model artifact feature columns are missing or incorrect.")
 
-    probability = predict_probability(artifact, mapped_features)
-    thresholds = artifact.get("risk_thresholds", {})
-    if thresholds:
-        medium = float(thresholds.get("medium", 0.35))
-        high = float(thresholds.get("high", 0.70))
-        risk_level = "LOW" if probability < medium else "MEDIUM" if probability <= high else "HIGH"
+    df = pd.DataFrame([row], columns=cols)
+    pipeline = artifact["pipeline"]
+    
+    prediction = int(pipeline.predict(df)[0])
+    probability = float(pipeline.predict_proba(df)[0, 1])
+
+    if probability >= 0.70:
+        risk_level = "HIGH"
+    elif probability >= 0.40:
+        risk_level = "MEDIUM"
     else:
-        risk_level = classify_risk(probability)
-    return probability, risk_level
+        risk_level = "LOW"
+
+    return {
+        "prediction": prediction,
+        "flood_probability": probability,
+        "risk_level": risk_level,
+        "source": "ML_MODEL"
+    }
