@@ -2,6 +2,10 @@
 
 A modular flood-disaster decision-support prototype for risk prediction, safe shelter recommendation, and evacuation routing.
 
+The current service area is Hyderabad only. The dashboard uses a fixed
+Hyderabad location, and coordinate-based API requests outside Hyderabad are
+rejected.
+
 ## Current status: Phase 2 complete
 
 This first phase establishes the application boundaries:

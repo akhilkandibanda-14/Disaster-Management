@@ -26,6 +26,11 @@ h1 { margin-bottom: 0; font-size: clamp(2rem, 4vw, 3.7rem); line-height: .95; le
 .demo-label { margin-left: auto; color: #9b5a32; border-color: #e5b997; background: transparent; white-space: nowrap; }
 .workspace-grid { max-width: 1440px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, .65fr); gap: 22px; }
 .map-panel { min-height: 590px; position: relative; overflow: hidden; display: grid; place-items: center; border: 1px solid #c9ddd3; background: #dbe9e1; box-shadow: 0 18px 50px #5075691f; }
+.leaflet-map { position: absolute; inset: 0; z-index: 0; }
+.leaflet-control-zoom { border: 1px solid #c9ddd3 !important; box-shadow: 0 3px 14px #102a4326 !important; }
+.leaflet-control-zoom a { color: #356052 !important; background: #f7fbf8 !important; }
+.leaflet-control-zoom a:hover { color: #102a43 !important; background: #dbeee5 !important; }
+.leaflet-loading { position: absolute; top: 18px; left: 50%; z-index: 1000; transform: translateX(-50%); padding: 9px 12px; color: #356052; background: #f7fbf8ee; box-shadow: 0 3px 14px #102a4326; font: 700 11px Arial, sans-serif; }
 .map-grid { position: absolute; inset: 0; opacity: .5; background-image: linear-gradient(32deg, transparent 47%, #a8c9bc 48%, transparent 50%), linear-gradient(112deg, transparent 48%, #b2cfc2 49%, transparent 51%); background-size: 150px 120px, 190px 170px; }
 .map-copy { position: relative; text-align: center; padding: 30px; background: #f7fbf8e6; border: 1px solid #bdd3c8; box-shadow: 0 12px 30px #36584b17; }
 .map-pin { display: grid; place-items: center; width: 45px; height: 45px; margin: 0 auto 14px; border-radius: 50%; color: white; background: #2e7661; font: 400 30px Arial, sans-serif; }
@@ -38,7 +43,7 @@ h1 { margin-bottom: 0; font-size: clamp(2rem, 4vw, 3.7rem); line-height: .95; le
 .user-marker { left: 50%; top: 50%; border-radius: 50%; padding: 8px 6px; }
 .shelter-marker { left: 65%; top: 38%; background: #2e7661; }
 .route-line { position: absolute; left: 47%; top: 45%; width: 24%; height: 3px; z-index: 2; background: #216e9e; transform: rotate(-18deg); box-shadow: 0 0 0 2px #f7fbf8aa; }
-.map-legend { position: absolute; bottom: 18px; left: 18px; display: flex; flex-wrap: wrap; gap: 12px; padding: 11px 13px; background: #f7fbf8ee; font: 12px Arial, sans-serif; }
+.map-legend { position: absolute; bottom: 18px; left: 18px; z-index: 1000; display: flex; flex-wrap: wrap; gap: 12px; padding: 11px 13px; background: #f7fbf8ee; font: 12px Arial, sans-serif; }
 .map-legend span { display: flex; align-items: center; gap: 6px; }
 .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
 .high { background: #c95243; } .medium { background: #e3a138; } .safe { background: #3b9674; }
@@ -47,7 +52,9 @@ h1 { margin-bottom: 0; font-size: clamp(2rem, 4vw, 3.7rem); line-height: .95; le
 .info-card strong { font-size: 1.4rem; }
 .metric-row, .location-card { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .neutral-badge { padding: 6px 9px; font-size: 10px; }
-.location-card button { padding: 9px 12px; border: 0; background: #bdd3c8; color: #536b61; cursor: not-allowed; }
+.location-card button { padding: 9px 12px; border: 0; background: #bdd3c8; color: #536b61; cursor: pointer; }
+.location-card button:hover { background: #a8c9bc; }
+.location-card button:disabled { cursor: wait; opacity: .7; }
 .primary-button { margin-top: 15px; padding: 11px 14px; border: 0; color: white; background: #2e7661; cursor: pointer; font: 700 12px Arial, sans-serif; }
 .primary-button:hover { background: #245f50; }
 .route-note { margin: 12px 0 0; color: #216e9e; font: 700 12px Arial, sans-serif; }

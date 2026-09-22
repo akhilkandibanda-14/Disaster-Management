@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.config import settings
+from app.config import is_in_hyderabad, settings
 from app.database import get_db
 from app.models.resources import RoadCondition, Shelter
 from app.schemas.route import EvacuationRouteRequest, EvacuationRouteResponse
@@ -15,6 +15,8 @@ router = APIRouter(tags=["routing"])
 
 @router.post("/evacuation-route", response_model=EvacuationRouteResponse)
 def evacuation_route(request: EvacuationRouteRequest, db: Session = Depends(get_db)) -> EvacuationRouteResponse:
+    if not is_in_hyderabad(request.user_latitude, request.user_longitude):
+        raise HTTPException(status_code=422, detail="This service currently supports Hyderabad coordinates only.")
     shelters = demo_shelters() if settings.demo_mode else list(db.scalars(select(Shelter)).all())
     roads = demo_roads() if settings.demo_mode else list(db.scalars(select(RoadCondition)).all())
 

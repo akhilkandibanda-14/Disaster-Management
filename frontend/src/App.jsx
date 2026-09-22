@@ -1,11 +1,75 @@
 import { useEffect, useMemo, useState } from 'react'
+import { CircleMarker, MapContainer, Polygon, Polyline, Popup, TileLayer, ZoomControl } from 'react-leaflet'
+import 'leaflet/dist/leaflet.css'
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000'
+const hyderabadLocation = { latitude: 17.385, longitude: 78.486 }
+const isInHyderabad = ({ latitude, longitude }) => latitude >= 17.2 && latitude <= 17.6 && longitude >= 78.2 && longitude <= 78.7
+
+const riskColors = {
+  HIGH: '#c95243',
+  MEDIUM: '#e3a138',
+  LOW: '#3b9674',
+}
+
+function pointIsInsidePolygon(latitude, longitude, polygon) {
+  let inside = false
+  for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index++) {
+    const [currentLongitude, currentLatitude] = polygon[index]
+    const [previousLongitude, previousLatitude] = polygon[previous]
+    const intersects = ((currentLatitude > latitude) !== (previousLatitude > latitude))
+      && longitude < ((previousLongitude - currentLongitude) * (latitude - currentLatitude)) / (previousLatitude - currentLatitude) + currentLongitude
+    if (intersects) inside = !inside
+  }
+  return inside
+}
+
+function RiskMap({ riskMap, location, recommendation, route, loading }) {
+  const bounds = riskMap?.bounds ?? [17.2, 78.2, 17.6, 78.7]
+  const center = [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2]
+  const routePositions = route?.geometry?.map(([longitude, latitude]) => [latitude, longitude]) ?? []
+
+  return (
+    <MapContainer className="leaflet-map" center={center} zoom={11} scrollWheelZoom zoomControl={false}>
+      <ZoomControl position="topright" />
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      {riskMap?.zones.map((zone) => {
+        const color = riskColors[zone.risk_level]
+        return (
+          <Polygon
+            key={zone.id}
+            positions={zone.polygon.map(([longitude, latitude]) => [latitude, longitude])}
+            pathOptions={{ color, fillColor: color, fillOpacity: 0.4, weight: 1 }}
+          >
+            <Popup>{zone.risk_level} risk · {(zone.flood_probability * 100).toFixed(0)}% probability</Popup>
+          </Polygon>
+        )
+      })}
+      <CircleMarker center={[location.latitude, location.longitude]} pathOptions={{ color: '#1f5d9a', fillColor: '#1f5d9a', fillOpacity: 1 }} radius={8}>
+        <Popup>Your live location</Popup>
+      </CircleMarker>
+      {recommendation?.recommendation && (
+        <CircleMarker
+          center={[recommendation.recommendation.shelter.latitude, recommendation.recommendation.shelter.longitude]}
+          pathOptions={{ color: '#2e7661', fillColor: '#2e7661', fillOpacity: 1 }}
+          radius={8}
+        >
+          <Popup>{recommendation.recommendation.shelter.name}</Popup>
+        </CircleMarker>
+      )}
+      {routePositions.length > 1 && <Polyline positions={routePositions} pathOptions={{ color: '#216e9e', weight: 5 }} />}
+      {loading && <div className="leaflet-loading" aria-label="Loading map data">Loading map data...</div>}
+    </MapContainer>
+  )
+}
 
 function App() {
   const [apiStatus, setApiStatus] = useState('Checking API...')
-  const [location, setLocation] = useState({ latitude: 17.385, longitude: 78.486 })
-  const [locationStatus, setLocationStatus] = useState('Demo location active')
+  const [location, setLocation] = useState(hyderabadLocation)
+  const [locationStatus, setLocationStatus] = useState('Hyderabad center location')
   const [weather, setWeather] = useState(null)
   const [riskMap, setRiskMap] = useState(null)
   const [recommendation, setRecommendation] = useState(null)
@@ -57,21 +121,27 @@ function App() {
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      loadDashboard(location)
+      loadDashboard(hyderabadLocation)
       return
     }
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const currentLocation = { latitude: position.coords.latitude, longitude: position.coords.longitude }
-        setLocation(currentLocation)
-        setLocationStatus('Browser location active')
-        loadDashboard(currentLocation)
+        if (isInHyderabad(currentLocation)) {
+          setLocation(currentLocation)
+          setLocationStatus('Live location active')
+          loadDashboard(currentLocation)
+          return
+        }
+        setLocationStatus('Outside Hyderabad - center location active')
+        loadDashboard(hyderabadLocation)
       },
       () => {
-        setLocationStatus('Permission denied - demo location active')
-        loadDashboard(location)
+        setLocationStatus('Location unavailable - Hyderabad center active')
+        loadDashboard(hyderabadLocation)
       },
-      { enableHighAccuracy: true, timeout: 8000 },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
     )
   }, [])
 
@@ -80,18 +150,10 @@ function App() {
     return riskMap.zones.reduce((summary, zone) => ({ ...summary, [zone.risk_level.toLowerCase()]: summary[zone.risk_level.toLowerCase()] + 1 }), { high: 0, medium: 0, low: 0 })
   }, [riskMap])
 
-  const mapStyle = (polygon) => {
-    if (!riskMap) return {}
-    const [south, west, north, east] = riskMap.bounds
-    const points = polygon.map(([longitude, latitude]) => `${((longitude - west) / (east - west)) * 100}% ${100 - ((latitude - south) / (north - south)) * 100}%`).join(', ')
-    return { clipPath: `polygon(${points})` }
-  }
-
-  const markerStyle = (latitude, longitude) => {
-    if (!riskMap) return {}
-    const [south, west, north, east] = riskMap.bounds
-    return { left: `${((longitude - west) / (east - west)) * 100}%`, top: `${100 - ((latitude - south) / (north - south)) * 100}%` }
-  }
+  const currentRiskZone = useMemo(() => {
+    if (!riskMap) return null
+    return riskMap.zones.find((zone) => pointIsInsidePolygon(location.latitude, location.longitude, zone.polygon)) ?? null
+  }, [location, riskMap])
 
   const navigate = async () => {
     try {
@@ -101,6 +163,35 @@ function App() {
     } catch (routeError) {
       setError(routeError.message)
     }
+  }
+
+  const refreshDashboard = () => {
+    setError('')
+    if (!navigator.geolocation) {
+      setLocationStatus('Location unavailable - Hyderabad center active')
+      loadDashboard(hyderabadLocation)
+      return
+    }
+
+    setLocationStatus('Refreshing live location...')
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const currentLocation = { latitude: position.coords.latitude, longitude: position.coords.longitude }
+        if (isInHyderabad(currentLocation)) {
+          setLocation(currentLocation)
+          setLocationStatus('Live location active')
+          loadDashboard(currentLocation)
+          return
+        }
+        setLocationStatus('Outside Hyderabad - center location active')
+        loadDashboard(hyderabadLocation)
+      },
+      () => {
+        setLocationStatus('Location unavailable - Hyderabad center active')
+        loadDashboard(hyderabadLocation)
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 },
+    )
   }
 
   const openShelters = shelters.filter((shelter) => shelter.status === 'OPEN')
@@ -161,14 +252,7 @@ function App() {
         </section>
       ) : <section className="workspace-grid">
         <div className="map-panel" aria-label="Flood risk map">
-          <div className="map-grid" />
-          <div className="zone-layer">
-            {riskMap?.zones.map((zone) => <div key={zone.id} className={`risk-zone ${zone.risk_level.toLowerCase()}`} style={mapStyle(zone.polygon)} title={`${zone.risk_level} risk: ${zone.flood_probability}`} />)}
-            <div className="user-marker" style={markerStyle(location.latitude, location.longitude)}>YOU</div>
-            {recommendation?.recommendation && <div className="shelter-marker" style={markerStyle(recommendation.recommendation.shelter.latitude, recommendation.recommendation.shelter.longitude)} title={recommendation.recommendation.shelter.name}>SHELTER</div>}
-            {route && <div className="route-line" />}
-          </div>
-          {loading && <div className="map-copy"><span className="map-pin">...</span><h2>Loading situation</h2><p>Collecting current weather and risk data.</p></div>}
+          <RiskMap riskMap={riskMap} location={location} recommendation={recommendation} route={route} loading={loading} />
           {!loading && !riskMap && <div className="map-copy"><span className="map-pin">!</span><h2>Map data unavailable</h2><p>Start the FastAPI backend to load the risk map.</p></div>}
           <div className="map-legend">
             <span><i className="legend-dot high" />High risk</span>
@@ -180,8 +264,9 @@ function App() {
 
         <aside className="side-panel">
           <article className="info-card">
-            <p className="card-label">CURRENT RISK</p>
-            <div className="metric-row"><strong>{riskSummary.high ? 'HIGH' : riskSummary.medium ? 'MEDIUM' : 'LOW'}</strong><span className="neutral-badge">{riskSummary.high} HIGH ZONES</span></div>
+            <p className="card-label">YOUR LOCATION RISK</p>
+            <div className="metric-row"><strong>{currentRiskZone?.risk_level ?? 'UNKNOWN'}</strong><span className="neutral-badge">SIMULATED</span></div>
+            <p className="muted">{currentRiskZone ? `${(currentRiskZone.flood_probability * 100).toFixed(0)}% simulated flood probability` : 'Waiting for risk-zone data.'}</p>
             <p className="muted">{weather?.condition ?? 'Weather loading'} · {weather ? `${weather.rainfall} mm rain` : 'Awaiting weather'}</p>
           </article>
           <article className="info-card">
@@ -197,7 +282,7 @@ function App() {
               <strong>{locationStatus}</strong>
               <p className="muted">{location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}</p>
             </div>
-            <button type="button" onClick={() => loadDashboard(location)}>Refresh</button>
+            <button type="button" onClick={refreshDashboard} disabled={loading}>{loading ? 'Refreshing...' : 'Refresh'}</button>
           </article>
         </aside>
       </section>}
