@@ -33,12 +33,33 @@ def clear_model_cache() -> None:
     load_model.cache_clear()
 
 
-def predict(features: dict[str, float]) -> tuple[float, str]:
+def predict(features: dict[str, Any]) -> tuple[float, str]:
     _ensure_ml_package_path()
     from ml.model import classify_risk, predict_probability
 
     artifact = load_model()
-    probability = predict_probability(artifact, features)
+    cols = artifact.get("feature_columns", [])
+    
+    if len(cols) >= 13:
+        mapped_features = {
+            cols[0]: features.get("latitude", 17.385),
+            cols[1]: features.get("longitude", 78.486),
+            cols[2]: features.get("rainfall", 0.0),
+            cols[3]: features.get("temperature", 30.0),
+            cols[4]: features.get("humidity", 50.0),
+            cols[5]: 1000.0,  # River Discharge
+            cols[6]: features.get("water_level", 5.0),
+            cols[7]: features.get("elevation", 500.0),
+            cols[8]: "Urban", # Land Cover
+            cols[9]: "Clay",  # Soil Type
+            cols[10]: 5000.0, # Population Density
+            cols[11]: 1.0,    # Infrastructure
+            cols[12]: 0.0     # Historical Floods
+        }
+    else:
+        mapped_features = features
+
+    probability = predict_probability(artifact, mapped_features)
     thresholds = artifact.get("risk_thresholds", {})
     if thresholds:
         medium = float(thresholds.get("medium", 0.35))
