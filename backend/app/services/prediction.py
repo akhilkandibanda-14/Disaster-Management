@@ -24,7 +24,7 @@ def resolve_model_path() -> Path:
 @lru_cache(maxsize=1)
 def load_model() -> dict[str, Any]:
     _ensure_ml_package_path()
-    from ml.model import load_artifact
+    from ml.predict import load_artifact
 
     return load_artifact(resolve_model_path())
 
@@ -35,7 +35,7 @@ def clear_model_cache() -> None:
 
 def predict(features: dict[str, Any]) -> tuple[float, str]:
     _ensure_ml_package_path()
-    from ml.model import classify_risk, predict_probability
+    from ml.predict import classify_risk, predict_probability
 
     artifact = load_model()
     cols = artifact.get("feature_columns", [])

@@ -1,57 +1,152 @@
-"""Train and persist the flood Random Forest model.
-
-Run from the repository root with:
-    python -m ml.train --dataset ml/data/flood_dataset.csv
-"""
-
-import argparse
+import pandas as pd
+import joblib
 from pathlib import Path
 
-import joblib
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.impute import SimpleImputer
 from sklearn.model_selection import train_test_split
+from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.impute import SimpleImputer
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report
 
-from ml.preprocess import FEATURE_COLUMNS, load_training_frame
+# -----------------------------------
+# 1. LOAD DATA
+# -----------------------------------
 
+DATA_PATH = "ml/data/flood_risk_dataset_india.csv"
 
-def build_pipeline(seed: int) -> Pipeline:
-    return Pipeline([
-        ("imputer", SimpleImputer(strategy="median")),
-        ("classifier", RandomForestClassifier(n_estimators=300, class_weight="balanced", random_state=seed, n_jobs=-1)),
-    ])
+df = pd.read_csv(DATA_PATH)
 
+print("Dataset shape:", df.shape)
+print("\nColumns:")
+print(df.columns.tolist())
 
-def train_model(dataset_path: str | Path, model_path: str | Path, test_size: float = 0.2, seed: int = 42) -> dict[str, object]:
-    features, target, target_name = load_training_frame(dataset_path)
-    if target.nunique() < 2:
-        raise ValueError("The training target must contain at least two classes.")
+# -----------------------------------
+# 2. TARGET
+# -----------------------------------
 
-    x_train, _, y_train, _ = train_test_split(features, target, test_size=test_size, stratify=target, random_state=seed)
-    pipeline = build_pipeline(seed)
-    pipeline.fit(x_train, y_train)
-    artifact = {
-        "pipeline": pipeline,
-        "feature_columns": FEATURE_COLUMNS,
-        "target_column": target_name,
-        "risk_thresholds": {"medium": 0.35, "high": 0.70},
-        "training_rows": len(features),
-    }
-    output_path = Path(model_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(artifact, output_path)
-    return artifact
+target = "Flood Occurred"
 
+X = df.drop(columns=[target])
+y = df[target]
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Train the flood risk Random Forest model.")
-    parser.add_argument("--dataset", default="ml/data/flood_dataset.csv")
-    parser.add_argument("--model", default="ml/models/flood_risk_model.joblib")
-    parser.add_argument("--test-size", type=float, default=0.2)
-    args = parser.parse_args()
-    artifact = train_model(args.dataset, args.model, test_size=args.test_size)
-    print(f"Saved {artifact['target_column']} model trained on {artifact['training_rows']} rows to {args.model}")
+# -----------------------------------
+# 3. IDENTIFY FEATURES
+# -----------------------------------
 
-if __name__ == "__main__":
-    main()
+numeric_features = X.select_dtypes(
+    include=["int64", "float64"]
+).columns.tolist()
+
+categorical_features = X.select_dtypes(
+    include=["object"]
+).columns.tolist()
+
+print("\nNumeric features:")
+print(numeric_features)
+
+print("\nCategorical features:")
+print(categorical_features)
+
+# -----------------------------------
+# 4. NUMERIC PIPELINE
+# -----------------------------------
+
+numeric_pipeline = Pipeline([
+    ("imputer", SimpleImputer(strategy="median")),
+    ("scaler", StandardScaler())
+])
+
+# -----------------------------------
+# 5. CATEGORICAL PIPELINE
+# -----------------------------------
+
+categorical_pipeline = Pipeline([
+    ("imputer", SimpleImputer(strategy="most_frequent")),
+    ("encoder", OneHotEncoder(handle_unknown="ignore"))
+])
+
+# -----------------------------------
+# 6. PREPROCESSOR
+# -----------------------------------
+
+preprocessor = ColumnTransformer([
+    ("num", numeric_pipeline, numeric_features),
+    ("cat", categorical_pipeline, categorical_features)
+])
+
+# -----------------------------------
+# 7. MODEL
+# -----------------------------------
+
+model = RandomForestClassifier(
+    n_estimators=200,
+    random_state=42,
+    class_weight="balanced",
+    n_jobs=-1
+)
+
+# -----------------------------------
+# 8. COMPLETE PIPELINE
+# -----------------------------------
+
+pipeline = Pipeline([
+    ("preprocessor", preprocessor),
+    ("model", model)
+])
+
+# -----------------------------------
+# 9. TRAIN TEST SPLIT
+# -----------------------------------
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    random_state=42,
+    stratify=y
+)
+
+# -----------------------------------
+# 10. TRAIN
+# -----------------------------------
+
+print("\nTraining model...")
+
+pipeline.fit(X_train, y_train)
+
+# -----------------------------------
+# 11. EVALUATE
+# -----------------------------------
+
+y_pred = pipeline.predict(X_test)
+
+accuracy = accuracy_score(y_test, y_pred)
+
+print("\nAccuracy:", accuracy)
+
+print("\nClassification Report:")
+print(classification_report(y_test, y_pred))
+
+# -----------------------------------
+# 12. SAVE MODEL
+# -----------------------------------
+
+MODEL_PATH = "ml/models/flood_risk_model.joblib"
+
+# Modified to save as a dictionary expected by the backend
+artifact = {
+    "pipeline": pipeline,
+    "feature_columns": X.columns.tolist(),
+    "target_column": target,
+    "risk_thresholds": {"medium": 0.35, "high": 0.70},
+    "training_rows": len(X)
+}
+
+output_path = Path(MODEL_PATH)
+output_path.parent.mkdir(parents=True, exist_ok=True)
+joblib.dump(artifact, output_path)
+
+print("\nModel artifact saved to:")
+print(MODEL_PATH)
