@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 import httpx
+from fastapi import HTTPException
 
 from app.config import settings
 from app.schemas.weather import WeatherResponse
@@ -8,28 +9,9 @@ from app.schemas.weather import WeatherResponse
 OPENWEATHER_URL = "https://api.openweathermap.org/data/2.5/weather"
 
 
-def demo_weather(latitude: float, longitude: float) -> WeatherResponse:
-    return WeatherResponse(
-        latitude=latitude,
-        longitude=longitude,
-        rainfall=120.0,
-        temperature=28.0,
-        humidity=91.0,
-        wind_speed=18.0,
-        pressure=1004.0,
-        condition="Heavy rain simulation",
-        source="DEMO / SIMULATED DATA",
-        timestamp=datetime.now(timezone.utc),
-        forecast_available=False,
-        warning="This is simulated development data, not a live emergency observation.",
-    )
-
-
 def fetch_weather(latitude: float, longitude: float) -> WeatherResponse:
-    if settings.demo_mode and not settings.weather_api_key:
-        return demo_weather(latitude, longitude)
     if not settings.weather_api_key:
-        raise RuntimeError("WEATHER_API_KEY is not configured and DEMO_MODE is disabled.")
+        raise HTTPException(status_code=500, detail="WEATHER_API_KEY is missing or invalid.")
 
     try:
         response = httpx.get(
@@ -38,23 +20,46 @@ def fetch_weather(latitude: float, longitude: float) -> WeatherResponse:
             timeout=10,
         )
         response.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        if e.response.status_code in (401, 403):
+            raise HTTPException(status_code=401, detail="Weather API authentication failed.")
+        elif e.response.status_code == 404:
+            raise HTTPException(status_code=404, detail="Weather provider location not found.")
+        elif e.response.status_code == 429:
+            raise HTTPException(status_code=429, detail="Weather API rate limit exceeded.")
+        else:
+            raise HTTPException(status_code=502, detail=f"Weather provider error: {e.response.status_code}")
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Weather provider timeout.")
+    except httpx.RequestError as e:
+        raise HTTPException(status_code=502, detail=f"Weather provider network failure: {e}")
+
+    try:
         payload = response.json()
-        rainfall = float(payload.get("rain", {}).get("1h", 0.0))
-        main = payload.get("main", {})
-        wind = payload.get("wind", {})
-        condition = payload.get("weather", [{}])[0].get("description", "Unknown")
+        rain_data = payload.get("rain", {})
+        rainfall = rain_data.get("1h", None)
+        if rainfall is not None:
+            rainfall = max(0.0, float(rainfall))
+
+        main_data = payload.get("main", {})
+        wind_data = payload.get("wind", {})
+        weather_list = payload.get("weather", [{}])[0]
+        condition = weather_list.get("main", "Unknown")
+        description = weather_list.get("description", "Unknown")
+
         return WeatherResponse(
             latitude=latitude,
             longitude=longitude,
-            rainfall=max(0.0, rainfall),
-            temperature=float(main["temp"]),
-            humidity=float(main["humidity"]),
-            wind_speed=max(0.0, float(wind.get("speed", 0.0))),
-            pressure=max(0.0, float(main.get("pressure", 0.0))),
-            condition=condition,
-            source="LIVE / OPENWEATHER",
+            temperature=float(main_data["temp"]),
+            humidity=float(main_data["humidity"]),
+            rainfall=rainfall,
+            wind_speed=max(0.0, float(wind_data.get("speed", 0.0))),
+            weather_condition=condition,
+            weather_description=description,
+            pressure=float(main_data.get("pressure")) if main_data.get("pressure") is not None else None,
+            source="OPENWEATHER",
             timestamp=datetime.now(timezone.utc),
             forecast_available=False,
         )
-    except (httpx.HTTPError, KeyError, TypeError, ValueError) as error:
-        raise RuntimeError(f"Weather provider unavailable: {error}") from error
+    except (KeyError, TypeError, ValueError) as error:
+        raise HTTPException(status_code=502, detail=f"Unexpected provider response: {error}")
