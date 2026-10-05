@@ -7,9 +7,9 @@ const hyderabadLocation = { latitude: 17.385, longitude: 78.486 }
 const isInHyderabad = ({ latitude, longitude }) => latitude >= 17.2 && latitude <= 17.6 && longitude >= 78.2 && longitude <= 78.7
 
 const riskColors = {
-  HIGH: '#c95243',
-  MEDIUM: '#e3a138',
-  LOW: '#3b9674',
+  HIGH: '#ef4444',
+  MEDIUM: '#f59e0b',
+  LOW: '#10b981',
 }
 
 function pointIsInsidePolygon(latitude, longitude, polygon) {
@@ -42,25 +42,25 @@ function RiskMap({ riskMap, location, recommendation, route, loading }) {
           <Polygon
             key={zone.id}
             positions={zone.polygon.map(([longitude, latitude]) => [latitude, longitude])}
-            pathOptions={{ color, fillColor: color, fillOpacity: 0.4, weight: 1 }}
+            pathOptions={{ color, fillColor: color, fillOpacity: 0.35, weight: 2 }}
           >
             <Popup>{zone.risk_level} risk · {(zone.flood_probability * 100).toFixed(0)}% probability</Popup>
           </Polygon>
         )
       })}
-      <CircleMarker center={[location.latitude, location.longitude]} pathOptions={{ color: '#1f5d9a', fillColor: '#1f5d9a', fillOpacity: 1 }} radius={8}>
+      <CircleMarker center={[location.latitude, location.longitude]} pathOptions={{ color: '#0ea5e9', fillColor: '#0ea5e9', fillOpacity: 1, weight: 3 }} radius={7}>
         <Popup>Your live location</Popup>
       </CircleMarker>
       {recommendation?.recommendation && (
         <CircleMarker
           center={[recommendation.recommendation.shelter.latitude, recommendation.recommendation.shelter.longitude]}
-          pathOptions={{ color: '#2e7661', fillColor: '#2e7661', fillOpacity: 1 }}
-          radius={8}
+          pathOptions={{ color: '#10b981', fillColor: '#10b981', fillOpacity: 1, weight: 3 }}
+          radius={7}
         >
           <Popup>{recommendation.recommendation.shelter.name}</Popup>
         </CircleMarker>
       )}
-      {routePositions.length > 1 && <Polyline positions={routePositions} pathOptions={{ color: '#216e9e', weight: 5 }} />}
+      {routePositions.length > 1 && <Polyline positions={routePositions} pathOptions={{ color: '#38bdf8', weight: 4, opacity: 0.8 }} />}
       {loading && <div className="leaflet-loading" aria-label="Loading map data">Loading map data...</div>}
     </MapContainer>
   )
