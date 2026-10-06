@@ -30,7 +30,7 @@ def test_supported_gauge_prediction(mock_calc_rain, mock_rainfall_response):
     pred_module.integration_service = IntegrationService(data_dir="data/raw/indofloods")
     
     # INDOFLOODS-gauge-394
-    response = client.post("/api/v1/predict/integrated", json={
+    response = client.post("/predict/integrated", json={
         "latitude": 12.18,
         "longitude": 77.73,
         "target_date": "2023-08-01"
@@ -51,7 +51,7 @@ def test_unsupported_hyderabad_prediction():
     # Tests 2, 4, 5, 6, 7
     pred_module.integration_service = IntegrationService(data_dir="data/raw/indofloods")
     
-    response = client.post("/api/v1/predict/integrated", json={
+    response = client.post("/predict/integrated", json={
         "latitude": 17.3850,
         "longitude": 78.4867,
         "target_date": "2023-08-01"
@@ -70,7 +70,7 @@ def test_unsupported_hyderabad_prediction():
     
 def test_gauge_far_out_of_coverage():
     # Test 4
-    response = client.post("/api/v1/predict/integrated", json={
+    response = client.post("/predict/integrated", json={
         "latitude": 0.0,
         "longitude": 0.0,
         "target_date": "2023-08-01"
@@ -85,7 +85,7 @@ def test_gauge_far_out_of_coverage():
 
 def test_invalid_target_date():
     future_date = (date.today() + timedelta(days=5)).isoformat()
-    response = client.post("/api/v1/predict/integrated", json={
+    response = client.post("/predict/integrated", json={
         "latitude": 12.18,
         "longitude": 77.73, # Supported location to pass coverage check
         "target_date": future_date
@@ -98,7 +98,7 @@ def test_invalid_target_date():
 def test_open_meteo_failure(mock_calc_rain):
     mock_calc_rain.side_effect = Exception("Open-Meteo down")
     
-    response = client.post("/api/v1/predict/integrated", json={
+    response = client.post("/predict/integrated", json={
         "latitude": 12.18,
         "longitude": 77.73,
         "target_date": "2023-08-01"
@@ -111,7 +111,7 @@ def test_model_artifact_unavailable(mock_integration_service):
     mock_integration_service.side_effect = Exception("File not found")
     pred_module.integration_service = None # Reset
     
-    response = client.post("/api/v1/predict/integrated", json={
+    response = client.post("/predict/integrated", json={
         "latitude": 18.995,
         "longitude": 81.332,
         "target_date": "2023-08-01"
