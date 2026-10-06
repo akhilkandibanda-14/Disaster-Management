@@ -1,39 +1,30 @@
-from fastapi import APIRouter, HTTPException, Query
-
-from app.config import HYDERABAD_BOUNDS, settings
-from app.schemas.risk import RiskMapResponse
-from app.services.risk import generate_risk_map
+from fastapi import APIRouter, HTTPException, Depends, Query
+from app.schemas.risk_map import GeographicRiskResponse, GaugesResponse
+from app.services.risk_map import get_risk_map_service, RiskMapService
 
 router = APIRouter(tags=["risk"])
 
-
-def _get_risk_map() -> RiskMapResponse:
-    try:
-        result = generate_risk_map(**HYDERABAD_BOUNDS)
-    except ValueError as error:
-        raise HTTPException(status_code=422, detail=str(error)) from error
-    if not settings.demo_mode:
-        raise HTTPException(status_code=503, detail="Trained geographic risk generation is unavailable until the supplied dataset is trained and the spatial feature source is configured.")
-    return result
-
-
-@router.get("/risk-map", response_model=RiskMapResponse)
+@router.get("/risk-map", response_model=GeographicRiskResponse)
 def risk_map(
-) -> RiskMapResponse:
-    return _get_risk_map()
+    latitude: float = Query(..., description="Latitude of the requested location"),
+    longitude: float = Query(..., description="Longitude of the requested location"),
+    service: RiskMapService = Depends(get_risk_map_service)
+) -> GeographicRiskResponse:
+    """
+    Get the predicted flood risk for a specific geographic coordinate.
+    Prediction is only available if the coordinate is within 50km of an official INDOFLOODS gauge.
+    """
+    try:
+        return service.get_risk_for_location(latitude, longitude)
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"Error generating geographic risk: {str(error)}")
 
-
-@router.get("/danger-zones", response_model=RiskMapResponse)
-def danger_zones(
-) -> RiskMapResponse:
-    result = _get_risk_map()
-    result.zones = [zone for zone in result.zones if zone.risk_level == "HIGH"]
-    return result
-
-
-@router.get("/safe-zones", response_model=RiskMapResponse)
-def safe_zones(
-) -> RiskMapResponse:
-    result = _get_risk_map()
-    result.zones = [zone for zone in result.zones if zone.risk_level == "LOW"]
-    return result
+@router.get("/risk-map/gauges", response_model=GaugesResponse)
+def get_gauges(service: RiskMapService = Depends(get_risk_map_service)) -> GaugesResponse:
+    """
+    Get all official INDOFLOODS gauge coordinates.
+    """
+    try:
+        return GaugesResponse(gauges=service.get_all_gauges())
+    except Exception as error:
+        raise HTTPException(status_code=500, detail=f"Error fetching gauges: {str(error)}")

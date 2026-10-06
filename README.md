@@ -158,3 +158,5 @@ dataset.
 ## Limitations
 
 The first release will use clearly labelled demo data when external credentials or authoritative feeds are unavailable. ML output is a decision-support signal, not a guarantee of safety. Google Maps and weather providers do not automatically know every newly flooded or blocked road.
+
+**Model Coverage Limitation:** The INDOFLOODS model is NOT a nationwide continuous spatial prediction model; it is based on predefined gauge/catchment observations. Predictions are only available when the requested location is within 50 km of an official reference gauge. Hyderabad is currently outside model coverage (nearest gauge is ~71.77 km away) and will not receive ML predictions under this model. SafeMap AI does not currently provide INDOFLOODS flood prediction for all of India.

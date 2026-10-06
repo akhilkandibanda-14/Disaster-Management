@@ -6,7 +6,7 @@ The INDOFLOODS severity model (`ml/models/flood_severity_model.joblib`) predicts
 This document outlines the strict API contract that must be adhered to when integrating this model into the FastAPI backend or frontend. The central principle of this contract is: **No scientific fabrication**. If real data is not available, the system must fail explicitly rather than producing a misleading probability.
 
 ## 2. Model Input Requirements
-The trained `RandomForest` model expects a dataframe containing precisely 124 features. 
+The trained `RandomForest` model expects a dataframe containing precisely 118 raw features (114 numerical, 4 categorical), which the preprocessing pipeline transforms into 130 features (5 numerical features are dropped due to all-NaNs in training, and the 4 categorical features are one-hot encoded into 21 columns).
 
 ### Core Required Features (Not Exhaustive):
 - **Antecedent Precipitation:** `T1d`, `T2d`, `T3d`, `T4d`, `T5d`, `T6d`, `T7d`, `T8d`, `T9d`, `T10d` (Daily precipitation for the 10 days leading up to the event).
