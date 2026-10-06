@@ -2,8 +2,13 @@ import pytest
 from datetime import date
 from unittest.mock import patch
 
+import app.api.prediction as pred_module
+from app.services.integration import IntegrationService
 from app.api.prediction import predict_integrated
 from app.schemas.prediction import IntegratedPredictionRequest
+
+pred_module.integration_service = IntegrationService(data_dir="data/raw/indofloods")
+
 from app.services.gauge_reference import GaugeReferenceService
 from app.schemas.gauge import NearestGaugeResponse, ReferenceGauge, Coordinates
 
