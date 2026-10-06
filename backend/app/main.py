@@ -6,6 +6,7 @@ from app.api.risk import router as risk_router
 from app.api.resources import router as resources_router
 from app.api.routing import router as routing_router
 from app.api.weather import router as weather_router
+from app.api.gauge import router as gauge_router
 from app.config import settings
 
 app = FastAPI(
@@ -25,6 +26,7 @@ app.add_middleware(
 app.include_router(resources_router)
 app.include_router(prediction_router)
 app.include_router(weather_router)
+app.include_router(gauge_router, prefix="/gauges", tags=["gauges"])
 app.include_router(risk_router)
 app.include_router(routing_router)
 
