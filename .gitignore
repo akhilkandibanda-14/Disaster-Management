@@ -16,3 +16,4 @@ ml/models/*.pkl
 
 # Local data
 *.sqlite3
+*.graphml

@@ -12,21 +12,8 @@ const riskColors = {
   LOW: '#10b981',
 }
 
-function pointIsInsidePolygon(latitude, longitude, polygon) {
-  let inside = false
-  for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index++) {
-    const [currentLongitude, currentLatitude] = polygon[index]
-    const [previousLongitude, previousLatitude] = polygon[previous]
-    const intersects = ((currentLatitude > latitude) !== (previousLatitude > latitude))
-      && longitude < ((previousLongitude - currentLongitude) * (latitude - currentLatitude)) / (previousLatitude - currentLatitude) + currentLongitude
-    if (intersects) inside = !inside
-  }
-  return inside
-}
-
-function RiskMap({ riskMap, location, recommendation, route, loading }) {
-  const bounds = riskMap?.bounds ?? [17.2, 78.2, 17.6, 78.7]
-  const center = [(bounds[0] + bounds[2]) / 2, (bounds[1] + bounds[3]) / 2]
+function RiskMap({ riskData, location, recommendedShelter, route, loading }) {
+  const center = [(17.2 + 17.6) / 2, (78.2 + 78.7) / 2]
   const routePositions = route?.geometry?.map(([longitude, latitude]) => [latitude, longitude]) ?? []
 
   return (
@@ -36,28 +23,34 @@ function RiskMap({ riskMap, location, recommendation, route, loading }) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {riskMap?.zones.map((zone) => {
-        const color = riskColors[zone.risk_level]
-        return (
-          <Polygon
-            key={zone.id}
-            positions={zone.polygon.map(([longitude, latitude]) => [latitude, longitude])}
-            pathOptions={{ color, fillColor: color, fillOpacity: 0.35, weight: 2 }}
-          >
-            <Popup>{zone.risk_level} risk · {(zone.flood_probability * 100).toFixed(0)}% probability</Popup>
-          </Polygon>
-        )
-      })}
+      
+      {/* Risk Point */}
+      {riskData && riskData.prediction_available && riskData.risk_level && (
+        <CircleMarker
+          center={[riskData.latitude, riskData.longitude]}
+          pathOptions={{ 
+            color: riskColors[riskData.risk_level] || '#94a3b8', 
+            fillColor: riskColors[riskData.risk_level] || '#94a3b8', 
+            fillOpacity: 0.35, 
+            weight: 2 
+          }}
+          radius={40}
+        >
+          <Popup>{riskData.risk_level} risk at queried location</Popup>
+        </CircleMarker>
+      )}
+
       <CircleMarker center={[location.latitude, location.longitude]} pathOptions={{ color: '#0ea5e9', fillColor: '#0ea5e9', fillOpacity: 1, weight: 3 }} radius={7}>
         <Popup>Your live location</Popup>
       </CircleMarker>
-      {recommendation?.recommendation && (
+      
+      {recommendedShelter && (
         <CircleMarker
-          center={[recommendation.recommendation.shelter.latitude, recommendation.recommendation.shelter.longitude]}
+          center={[recommendedShelter.latitude, recommendedShelter.longitude]}
           pathOptions={{ color: '#10b981', fillColor: '#10b981', fillOpacity: 1, weight: 3 }}
           radius={7}
         >
-          <Popup>{recommendation.recommendation.shelter.name}</Popup>
+          <Popup>{recommendedShelter.name} ({recommendedShelter.data_status || 'PUBLIC_UNVERIFIED'})</Popup>
         </CircleMarker>
       )}
       {routePositions.length > 1 && <Polyline positions={routePositions} pathOptions={{ color: '#38bdf8', weight: 4, opacity: 0.8 }} />}
@@ -71,8 +64,8 @@ function App() {
   const [location, setLocation] = useState(hyderabadLocation)
   const [locationStatus, setLocationStatus] = useState('Hyderabad center location')
   const [weather, setWeather] = useState(null)
-  const [riskMap, setRiskMap] = useState(null)
-  const [recommendation, setRecommendation] = useState(null)
+  const [riskData, setRiskData] = useState(null)
+  const [recommendationResponse, setRecommendationResponse] = useState(null)
   const [route, setRoute] = useState(null)
   const [alerts, setAlerts] = useState([])
   const [shelters, setShelters] = useState([])
@@ -94,23 +87,26 @@ function App() {
     setLoading(true)
     setError('')
     const query = `latitude=${currentLocation.latitude}&longitude=${currentLocation.longitude}`
+    const recQuery = `${query}&radius_km=15.0&top_n=3`
     try {
-      const [health, weatherData, riskData, shelterData, alertData, shelterList, roadList] = await Promise.all([
-        request('/health'),
-        request(`/weather?${query}`),
-        request('/risk-map'),
-        request(`/shelters/recommended?${query}`),
-        request('/disaster-alerts'),
-        request('/shelters'),
-        request('/road-conditions'),
+      const [health, weatherData, riskRes, shelterRes, alertData, shelterList, roadList] = await Promise.all([
+        request('/health').catch(() => ({})),
+        request(`/weather?${query}`).catch(() => null),
+        request(`/risk-map?${query}`).catch(() => null),
+        request(`/shelters/recommended?${recQuery}`).catch(() => null),
+        request('/disaster-alerts').catch(() => []),
+        request('/shelters').catch(() => ({ shelters: [] })),
+        request('/road-conditions').catch(() => [])
       ])
-      setApiStatus(health.demo_mode ? 'API online - demo mode' : 'API online')
+      
+      setApiStatus(health?.demo_mode ? 'API online - demo mode' : 'API online')
       setWeather(weatherData)
-      setRiskMap(riskData)
-      setRecommendation(shelterData)
-      setAlerts(alertData)
-      setShelters(shelterList)
-      setRoads(roadList)
+      setRiskData(riskRes)
+      setRecommendationResponse(shelterRes)
+      setAlerts(alertData || [])
+      setShelters(shelterList?.shelters || [])
+      setRoads(roadList || [])
+      setRoute(null)
     } catch (loadError) {
       setApiStatus('API unavailable')
       setError(loadError.message)
@@ -145,20 +141,19 @@ function App() {
     )
   }, [])
 
-  const riskSummary = useMemo(() => {
-    if (!riskMap) return { high: 0, medium: 0, low: 0 }
-    return riskMap.zones.reduce((summary, zone) => ({ ...summary, [zone.risk_level.toLowerCase()]: summary[zone.risk_level.toLowerCase()] + 1 }), { high: 0, medium: 0, low: 0 })
-  }, [riskMap])
-
-  const currentRiskZone = useMemo(() => {
-    if (!riskMap) return null
-    return riskMap.zones.find((zone) => pointIsInsidePolygon(location.latitude, location.longitude, zone.polygon)) ?? null
-  }, [location, riskMap])
-
-  const navigate = async () => {
+  const navigateAction = async () => {
+    if (!recommendationResponse?.recommendations?.[0]) return
     try {
       setError('')
-      const data = await request('/evacuation-route', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ user_latitude: location.latitude, user_longitude: location.longitude }) })
+      const dest = recommendationResponse.recommendations[0]
+      const data = await request('/evacuation-route', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify({ 
+          origin: { latitude: location.latitude, longitude: location.longitude },
+          destination: { latitude: dest.latitude, longitude: dest.longitude } 
+        }) 
+      })
       setRoute(data)
     } catch (routeError) {
       setError(routeError.message)
@@ -194,7 +189,7 @@ function App() {
     )
   }
 
-  const openShelters = shelters.filter((shelter) => shelter.status === 'OPEN')
+  const openShelters = shelters.filter((shelter) => shelter.operational_status === 'OPEN')
   const blockedRoads = roads.filter((road) => road.status !== 'OPEN')
 
   return (
@@ -213,14 +208,16 @@ function App() {
         </div>
       </header>
 
-      <section className="alert-banner" aria-label="Current system state">
-        <span className="alert-mark">!</span>
-        <div>
-          <strong>{alerts[0]?.severity ?? 'FLOOD'} FLOOD ALERT</strong>
-          <p>{alerts[0]?.description ?? 'Loading current disaster information...'}</p>
-        </div>
-        <span className="demo-label">{alerts[0]?.source ?? 'LOADING'}</span>
-      </section>
+      {alerts.length > 0 && (
+        <section className="alert-banner" aria-label="Current system state">
+          <span className="alert-mark">!</span>
+          <div>
+            <strong>{alerts[0]?.severity ?? 'FLOOD'} FLOOD ALERT</strong>
+            <p>{alerts[0]?.description ?? 'Loading current disaster information...'}</p>
+          </div>
+          <span className="demo-label">{alerts[0]?.source ?? 'LOADING'}</span>
+        </section>
+      )}
 
       {error && <div className="error-banner" role="alert">{error}</div>}
 
@@ -231,33 +228,55 @@ function App() {
               <p className="eyebrow">RESPONSE OPERATIONS</p>
               <h2>Situation overview</h2>
             </div>
-            <span className="demo-label">{alerts[0]?.source ?? 'LOADING'}</span>
+            {alerts.length > 0 && <span className="demo-label">{alerts[0]?.source ?? 'LOADING'}</span>}
           </div>
           <div className="operations-metrics">
             <article className="metric-card"><span>Active alerts</span><strong>{alerts.length}</strong><small>Latest reports</small></article>
-            <article className="metric-card"><span>Open shelters</span><strong>{openShelters.length}</strong><small>{shelters.length} locations tracked</small></article>
-            <article className="metric-card warning"><span>Roads requiring action</span><strong>{blockedRoads.length}</strong><small>Closed or flooded</small></article>
-            <article className="metric-card"><span>Available capacity</span><strong>{openShelters.reduce((total, shelter) => total + shelter.available_capacity, 0)}</strong><small>Across open shelters</small></article>
+            <article className="metric-card"><span>Tracked shelters</span><strong>{shelters.length}</strong><small>Total locations in DB</small></article>
+            <article className="metric-card warning"><span>Monitored roads</span><strong>{roads.length}</strong><small>Condition reports</small></article>
           </div>
           <div className="operations-grid">
             <article className="operations-panel">
               <div className="panel-heading"><h3>Shelter status</h3><span>{shelters.length} total</span></div>
-              {shelters.map((shelter) => <div className="resource-row" key={shelter.id}><div><strong>{shelter.name}</strong><small>{shelter.risk_level} risk · {shelter.accessibility} access</small></div><span className={`resource-status ${shelter.status.toLowerCase()}`}>{shelter.status}</span><b>{shelter.available_capacity}/{shelter.capacity}</b></div>)}
+              {shelters.map((shelter) => (
+                <div className="resource-row" key={shelter.shelter_id || shelter.id || shelter.name}>
+                  <div>
+                    <strong>{shelter.name}</strong>
+                    <small>Status: {shelter.data_status || 'PUBLIC_UNVERIFIED'}</small>
+                  </div>
+                  <span className={`resource-status`}>{shelter.operational_status || 'UNKNOWN'}</span>
+                  <b>Cap: {shelter.capacity || '?'}</b>
+                </div>
+              ))}
             </article>
             <article className="operations-panel">
               <div className="panel-heading"><h3>Road conditions</h3><span>{roads.length} monitored</span></div>
-              {roads.map((road) => <div className="resource-row" key={road.id}><div><strong>{road.road_name}</strong><small>{road.notes ?? 'No notes recorded'}</small></div><span className={`resource-status ${road.status.toLowerCase()}`}>{road.status}</span></div>)}
+              {roads.map((road) => (
+                <div className="resource-row" key={road.id}>
+                  <div>
+                    <strong>{road.road_name}</strong>
+                    <small>{road.notes ?? 'No notes recorded'}</small>
+                  </div>
+                  <span className={`resource-status ${road.status?.toLowerCase() || ''}`}>{road.status || 'UNKNOWN'}</span>
+                </div>
+              ))}
             </article>
           </div>
         </section>
       ) : <section className="workspace-grid">
         <div className="map-panel" aria-label="Flood risk map">
-          <RiskMap riskMap={riskMap} location={location} recommendation={recommendation} route={route} loading={loading} />
-          {!loading && !riskMap && <div className="map-copy"><span className="map-pin">!</span><h2>Map data unavailable</h2><p>Start the FastAPI backend to load the risk map.</p></div>}
+          <RiskMap 
+            riskData={riskData} 
+            location={location} 
+            recommendedShelter={recommendationResponse?.recommendations?.[0]} 
+            route={route} 
+            loading={loading} 
+          />
+          {!loading && !riskData && <div className="map-copy"><span className="map-pin">!</span><h2>Map data unavailable</h2><p>Start the FastAPI backend to load the risk map.</p></div>}
           <div className="map-legend">
             <span><i className="legend-dot high" />High risk</span>
             <span><i className="legend-dot medium" />Medium risk</span>
-            <span><i className="legend-dot safe" />Safe zone</span>
+            <span><i className="legend-dot safe" />Low risk</span>
             <span><i className="legend-dot user" />You</span>
           </div>
         </div>
@@ -265,17 +284,47 @@ function App() {
         <aside className="side-panel">
           <article className="info-card">
             <p className="card-label">YOUR LOCATION RISK</p>
-            <div className="metric-row"><strong>{currentRiskZone?.risk_level ?? 'UNKNOWN'}</strong><span className="neutral-badge">SIMULATED</span></div>
-            <p className="muted">{currentRiskZone ? `${(currentRiskZone.flood_probability * 100).toFixed(0)}% simulated flood probability` : 'Waiting for risk-zone data.'}</p>
-            <p className="muted">{weather?.condition ?? 'Weather loading'} · {weather ? `${weather.rainfall} mm rain` : 'Awaiting weather'}</p>
+            {riskData ? (
+              <>
+                <div className="metric-row">
+                  <strong>{riskData.prediction_available ? riskData.risk_level : 'UNKNOWN'}</strong>
+                  <span className="neutral-badge">{riskData.coverage_status}</span>
+                </div>
+                {!riskData.prediction_available && (
+                  <p className="muted" style={{marginTop: "5px"}}>Flood prediction unavailable.</p>
+                )}
+                <p className="muted">{weather?.condition ?? 'Weather loading'} · {weather ? `${weather.rainfall} mm rain` : 'Awaiting weather'}</p>
+              </>
+            ) : (
+              <p className="muted">Waiting for risk-zone data.</p>
+            )}
           </article>
+          
           <article className="info-card">
             <p className="card-label">RECOMMENDED SHELTER</p>
-            <strong>{recommendation?.recommendation?.shelter.name ?? 'No safe shelter found'}</strong>
-            <p className="muted">{recommendation?.recommendation ? `${recommendation.recommendation.safety_score}/100 safety · ${recommendation.recommendation.distance_km} km · ${recommendation.recommendation.shelter.available_capacity} spaces` : recommendation?.warning ?? 'Waiting for shelter data.'}</p>
-            {recommendation?.recommendation && <button className="primary-button" type="button" onClick={navigate}>Navigate to safety</button>}
-            {route && <p className="route-note">Route: {route.distance_km} km · {route.duration_minutes} min · {route.route_risk} risk</p>}
+            {recommendationResponse?.recommendations?.length > 0 ? (
+              <>
+                <strong>{recommendationResponse.recommendations[0].name}</strong>
+                <p className="muted">
+                   {recommendationResponse.recommendations[0].distance_km?.toFixed(2) ?? '?'} km · Capacity: {recommendationResponse.recommendations[0].capacity ?? 'Unknown'}
+                </p>
+                <p className="route-note" style={{fontSize: "0.8em", color: "var(--warning)", borderColor: "var(--warning)"}}>Status: {recommendationResponse.recommendations[0].data_status || 'PUBLIC_UNVERIFIED'}</p>
+                <button className="primary-button" type="button" onClick={navigateAction}>Find OSM road-network route</button>
+              </>
+            ) : (
+              <p className="muted">{recommendationResponse?.limitations?.[0] ?? 'No shelter found.'}</p>
+            )}
+            
+            {route && (
+              <p className="route-note">
+                Shortest available road-network route: <br/>
+                {route.route_distance_km?.toFixed(2) ?? '?'} km · {route.estimated_duration_min ? `${route.estimated_duration_min} min` : 'Travel time unavailable'}
+                <br />
+                <span style={{fontSize: "0.85em", color: "var(--text-muted)", display: "block", marginTop: "4px"}}>Road Condition Status: {route.road_condition_status || 'UNKNOWN'}</span>
+              </p>
+            )}
           </article>
+          
           <article className="info-card location-card">
             <div>
               <p className="card-label">YOUR LOCATION</p>
