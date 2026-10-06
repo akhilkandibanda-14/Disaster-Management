@@ -6,11 +6,10 @@ import app.api.prediction as pred_module
 from app.services.integration import IntegrationService
 from app.api.prediction import predict_integrated
 from app.schemas.prediction import IntegratedPredictionRequest
-
-pred_module.integration_service = IntegrationService(data_dir="data/raw/indofloods")
-
 from app.services.gauge_reference import GaugeReferenceService
 from app.schemas.gauge import NearestGaugeResponse, ReferenceGauge, Coordinates
+
+pred_module.integration_service = IntegrationService(data_dir="data/raw/indofloods")
 
 # Mock GaugeReferenceService to test specific distances and threshold behaviors
 @pytest.fixture
