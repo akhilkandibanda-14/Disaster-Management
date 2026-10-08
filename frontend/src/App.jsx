@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CircleMarker, MapContainer, Polygon, Polyline, Popup, TileLayer, ZoomControl } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
+import OperationsDashboard from './components/OperationsDashboard'
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000'
 const hyderabadLocation = { latitude: 17.385, longitude: 78.486 }
@@ -70,6 +71,8 @@ function App() {
   const [alerts, setAlerts] = useState([])
   const [shelters, setShelters] = useState([])
   const [roads, setRoads] = useState([])
+  const [gauges, setGauges] = useState([])
+  const [hydrology, setHydrology] = useState(null)
   const [view, setView] = useState('citizen')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -89,14 +92,16 @@ function App() {
     const query = `latitude=${currentLocation.latitude}&longitude=${currentLocation.longitude}`
     const recQuery = `${query}&radius_km=15.0&top_n=3`
     try {
-      const [health, weatherData, riskRes, shelterRes, alertData, shelterList, roadList] = await Promise.all([
+      const [health, weatherData, riskRes, shelterRes, alertData, shelterList, roadList, gaugeList, hydroData] = await Promise.all([
         request('/health').catch(() => ({})),
         request(`/weather?${query}`).catch(() => null),
         request(`/risk-map?${query}`).catch(() => null),
         request(`/shelters/recommended?${recQuery}`).catch(() => null),
         request('/disaster-alerts').catch(() => []),
         request('/shelters').catch(() => ({ shelters: [] })),
-        request('/road-conditions').catch(() => [])
+        request('/road-conditions').catch(() => []),
+        request('/gauges').catch(() => []),
+        request(`/hydrology/water-level?${query}`).catch(() => null)
       ])
       
       setApiStatus(health?.demo_mode ? 'API online - demo mode' : 'API online')
@@ -106,6 +111,8 @@ function App() {
       setAlerts(alertData || [])
       setShelters(shelterList?.shelters || [])
       setRoads(roadList || [])
+      setGauges(gaugeList || [])
+      setHydrology(hydroData)
       setRoute(null)
     } catch (loadError) {
       setApiStatus('API unavailable')
@@ -140,6 +147,12 @@ function App() {
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
     )
   }, [])
+
+  const handleLocationSelect = (newLocation) => {
+    setLocation(newLocation)
+    setLocationStatus('Map click location selected')
+    loadDashboard(newLocation)
+  }
 
   const navigateAction = async () => {
     if (!recommendationResponse?.recommendations?.[0]) return
@@ -208,61 +221,39 @@ function App() {
         </div>
       </header>
 
-      {alerts.length > 0 && (
-        <section className="alert-banner" aria-label="Current system state">
-          <span className="alert-mark">!</span>
-          <div>
-            <strong>{alerts[0]?.severity ?? 'FLOOD'} FLOOD ALERT</strong>
-            <p>{alerts[0]?.description ?? 'Loading current disaster information...'}</p>
-          </div>
-          <span className="demo-label">{alerts[0]?.source ?? 'LOADING'}</span>
-        </section>
-      )}
+      <section className="alert-banner" aria-label="Current system state">
+        <span className="alert-mark">!</span>
+        <div>
+          {riskData?.coverage_status === 'MODEL_UNSUPPORTED' ? (
+            <>
+              <strong>FLOOD PREDICTION UNAVAILABLE</strong>
+              <p>The selected location is outside the current INDOFLOODS model coverage.</p>
+            </>
+          ) : (
+            <>
+              <strong>DEMO HYDROLOGY DATA</strong>
+              <p>Water-level information is currently simulated for demonstration purposes. Follow official disaster-management instructions for real emergencies.</p>
+            </>
+          )}
+        </div>
+      </section>
 
       {error && <div className="error-banner" role="alert">{error}</div>}
 
       {view === 'operations' ? (
-        <section className="operations-view">
-          <div className="operations-heading">
-            <div>
-              <p className="eyebrow">RESPONSE OPERATIONS</p>
-              <h2>Situation overview</h2>
-            </div>
-            {alerts.length > 0 && <span className="demo-label">{alerts[0]?.source ?? 'LOADING'}</span>}
-          </div>
-          <div className="operations-metrics">
-            <article className="metric-card"><span>Active alerts</span><strong>{alerts.length}</strong><small>Latest reports</small></article>
-            <article className="metric-card"><span>Tracked shelters</span><strong>{shelters.length}</strong><small>Total locations in DB</small></article>
-            <article className="metric-card warning"><span>Monitored roads</span><strong>{roads.length}</strong><small>Condition reports</small></article>
-          </div>
-          <div className="operations-grid">
-            <article className="operations-panel">
-              <div className="panel-heading"><h3>Shelter status</h3><span>{shelters.length} total</span></div>
-              {shelters.map((shelter) => (
-                <div className="resource-row" key={shelter.shelter_id || shelter.id || shelter.name}>
-                  <div>
-                    <strong>{shelter.name}</strong>
-                    <small>Status: {shelter.data_status || 'PUBLIC_UNVERIFIED'}</small>
-                  </div>
-                  <span className={`resource-status`}>{shelter.operational_status || 'UNKNOWN'}</span>
-                  <b>Cap: {shelter.capacity || '?'}</b>
-                </div>
-              ))}
-            </article>
-            <article className="operations-panel">
-              <div className="panel-heading"><h3>Road conditions</h3><span>{roads.length} monitored</span></div>
-              {roads.map((road) => (
-                <div className="resource-row" key={road.id}>
-                  <div>
-                    <strong>{road.road_name}</strong>
-                    <small>{road.notes ?? 'No notes recorded'}</small>
-                  </div>
-                  <span className={`resource-status ${road.status?.toLowerCase() || ''}`}>{road.status || 'UNKNOWN'}</span>
-                </div>
-              ))}
-            </article>
-          </div>
-        </section>
+        <OperationsDashboard 
+          apiStatus={apiStatus}
+          weather={weather}
+          riskData={riskData}
+          shelters={shelters}
+          roads={roads}
+          location={location}
+          route={route}
+          gauges={gauges}
+          hydrology={hydrology}
+          alerts={alerts}
+          onLocationSelect={handleLocationSelect}
+        />
       ) : <section className="workspace-grid">
         <div className="map-panel" aria-label="Flood risk map">
           <RiskMap 
@@ -274,32 +265,60 @@ function App() {
           />
           {!loading && !riskData && <div className="map-copy"><span className="map-pin">!</span><h2>Map data unavailable</h2><p>Start the FastAPI backend to load the risk map.</p></div>}
           <div className="map-legend">
-            <span><i className="legend-dot high" />High risk</span>
-            <span><i className="legend-dot medium" />Medium risk</span>
-            <span><i className="legend-dot safe" />Low risk</span>
-            <span><i className="legend-dot user" />You</span>
+            <span><i className="legend-dot user" />Your location</span>
+            <span><i className="legend-dot safe" style={{backgroundColor: '#10b981'}} />Shelter</span>
+            <span><i className="legend-dot route" style={{backgroundColor: '#38bdf8'}} />OSM road-network route</span>
+            <span><i className="legend-dot unknown" style={{backgroundColor: '#94a3b8'}} />Prediction unavailable</span>
           </div>
         </div>
 
         <aside className="side-panel">
+          {/* Current Location Card */}
+          <article className="info-card location-card">
+            <div>
+              <p className="card-label">YOUR LOCATION</p>
+              <strong>{locationStatus}</strong>
+              <p className="muted">{location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}</p>
+            </div>
+            <button type="button" onClick={refreshDashboard} disabled={loading}>{loading ? 'Refreshing...' : 'Refresh'}</button>
+          </article>
+
+          {/* Flood Prediction Status Card */}
           <article className="info-card">
-            <p className="card-label">YOUR LOCATION RISK</p>
+            <p className="card-label">FLOOD PREDICTION STATUS</p>
             {riskData ? (
               <>
                 <div className="metric-row">
-                  <strong>{riskData.prediction_available ? riskData.risk_level : 'UNKNOWN'}</strong>
+                  <strong>{riskData.prediction_available ? 'Flood prediction available' : 'Flood prediction unavailable'}</strong>
                   <span className="neutral-badge">{riskData.coverage_status}</span>
                 </div>
-                {!riskData.prediction_available && (
-                  <p className="muted" style={{marginTop: "5px"}}>Flood prediction unavailable.</p>
+                {riskData.prediction_available ? (
+                  <>
+                    <p className="muted" style={{marginTop: "8px", color: "white"}}>Risk level: {riskData.risk_level}</p>
+                    {riskData.probability !== undefined && riskData.probability !== null && (
+                      <p className="muted">Model severe-flood probability: {(riskData.probability * 100).toFixed(1)}%</p>
+                    )}
+                    <p className="muted">Model: INDOFLOODS flood severity model</p>
+                  </>
+                ) : (
+                  <p className="muted" style={{marginTop: "8px"}}>The selected location is outside the current INDOFLOODS model coverage.</p>
                 )}
-                <p className="muted">{weather?.condition ?? 'Weather loading'} · {weather ? `${weather.rainfall} mm rain` : 'Awaiting weather'}</p>
+                
+                <div style={{marginTop: "16px", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "12px"}}>
+                  <p className="muted">
+                    {weather?.condition ?? 'Weather data unavailable'} · {
+                      !weather ? 'Loading rainfall data...' : 
+                      (weather.rainfall == null ? 'Rainfall data unavailable' : `Historical/reanalysis rainfall: ${weather.rainfall} mm`)
+                    }
+                  </p>
+                </div>
               </>
             ) : (
               <p className="muted">Waiting for risk-zone data.</p>
             )}
           </article>
           
+          {/* Recommended Shelter Card */}
           <article className="info-card">
             <p className="card-label">RECOMMENDED SHELTER</p>
             {recommendationResponse?.recommendations?.length > 0 ? (
@@ -308,30 +327,59 @@ function App() {
                 <p className="muted">
                    {recommendationResponse.recommendations[0].distance_km?.toFixed(2) ?? '?'} km · Capacity: {recommendationResponse.recommendations[0].capacity ?? 'Unknown'}
                 </p>
-                <p className="route-note" style={{fontSize: "0.8em", color: "var(--warning)", borderColor: "var(--warning)"}}>Status: {recommendationResponse.recommendations[0].data_status || 'PUBLIC_UNVERIFIED'}</p>
-                <button className="primary-button" type="button" onClick={navigateAction}>Find OSM road-network route</button>
+                <p className="muted">
+                   Operational status: {recommendationResponse.recommendations[0].operational_status || 'Unknown'}
+                </p>
+                <div className="route-note" style={{fontSize: "0.85em", color: "var(--warning)", borderColor: "var(--warning)", textAlign: "left", marginTop: "12px"}}>
+                  <strong style={{fontSize: "1em", margin: "0 0 4px 0", color: "var(--warning)"}}>PUBLIC_UNVERIFIED</strong>
+                  <span style={{color: "var(--text-main)", display: "block", marginTop: "4px"}}>Safety not verified. Not confirmed as an emergency flood shelter.</span>
+                </div>
+                
+                <button className="primary-button" type="button" onClick={navigateAction}>Find OSM Road-Network Route</button>
+                
+                {route && (
+                  <div style={{marginTop: "16px", padding: "12px", background: "rgba(14,165,233,0.05)", borderRadius: "8px", border: "1px solid rgba(14,165,233,0.2)"}}>
+                    <strong style={{fontSize: "1.1rem", display: "block", marginBottom: "8px"}}>Shortest available road-network route</strong>
+                    <p className="muted" style={{margin: "4px 0"}}>Route distance: {route.route_distance_km?.toFixed(2) ?? '?'} km</p>
+                    <p className="muted" style={{margin: "4px 0"}}>Estimated duration: {route.estimated_duration_min ? `${route.estimated_duration_min} minutes` : 'Travel time unavailable'}</p>
+                    <p className="muted" style={{margin: "4px 0"}}>Road source: OpenStreetMap</p>
+                    <p className="muted" style={{margin: "4px 0"}}>Road condition: {route.road_condition_status || 'UNKNOWN'}</p>
+                    <p style={{fontSize: "0.85em", color: "var(--warning)", margin: "8px 0 0 0"}}>Live traffic and temporary road closures are not currently integrated.</p>
+                  </div>
+                )}
+                
+                {recommendationResponse.recommendations.length > 1 && (
+                  <div style={{marginTop: "20px"}}>
+                    <p className="card-label">OTHER RECOMMENDED SHELTERS</p>
+                    {recommendationResponse.recommendations.slice(1).map((s, idx) => (
+                      <div key={idx} style={{padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)"}}>
+                        <div style={{display: "flex", justifyContent: "space-between"}}>
+                          <span style={{color: "white", fontWeight: "600"}}>{s.name}</span>
+                          <span style={{color: "var(--text-muted)", fontSize: "0.9em"}}>{s.distance_km?.toFixed(2)} km</span>
+                        </div>
+                        <div style={{fontSize: "0.8em", color: "var(--warning)", marginTop: "2px"}}>{s.data_status || 'PUBLIC_UNVERIFIED'}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </>
             ) : (
               <p className="muted">{recommendationResponse?.limitations?.[0] ?? 'No shelter found.'}</p>
             )}
-            
-            {route && (
-              <p className="route-note">
-                Shortest available road-network route: <br/>
-                {route.route_distance_km?.toFixed(2) ?? '?'} km · {route.estimated_duration_min ? `${route.estimated_duration_min} min` : 'Travel time unavailable'}
-                <br />
-                <span style={{fontSize: "0.85em", color: "var(--text-muted)", display: "block", marginTop: "4px"}}>Road Condition Status: {route.road_condition_status || 'UNKNOWN'}</span>
-              </p>
-            )}
           </article>
           
-          <article className="info-card location-card">
-            <div>
-              <p className="card-label">YOUR LOCATION</p>
-              <strong>{locationStatus}</strong>
-              <p className="muted">{location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}</p>
-            </div>
-            <button type="button" onClick={refreshDashboard} disabled={loading}>{loading ? 'Refreshing...' : 'Refresh'}</button>
+          {/* Limitations Disclaimer */}
+          <article className="info-card">
+            <p className="card-label">IMPORTANT LIMITATIONS</p>
+            <ul style={{margin: 0, paddingLeft: "16px", color: "var(--text-muted)", fontSize: "0.85em", lineHeight: "1.5"}}>
+              <li style={{marginBottom: "4px"}}>Flood prediction is only available within the current INDOFLOODS geographic coverage.</li>
+              <li style={{marginBottom: "4px"}}>Shelter records are currently PUBLIC_UNVERIFIED.</li>
+              <li style={{marginBottom: "4px"}}>Road routing uses the local OpenStreetMap road network.</li>
+              <li style={{marginBottom: "4px"}}>Live traffic and temporary road closures are not integrated.</li>
+              <li style={{marginBottom: "4px"}}>Hydrology information is currently demonstration data.</li>
+              <li style={{marginBottom: "4px"}}>Routes are not guaranteed flood-safe.</li>
+              <li>Follow official emergency instructions during real disasters.</li>
+            </ul>
           </article>
         </aside>
       </section>}

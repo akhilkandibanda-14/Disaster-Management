@@ -25,3 +25,11 @@ def get_nearest_gauge(
     # We do not raise HTTPException if not in coverage, we just return the response 
     # indicating within_model_coverage=False so the client knows it was rejected gracefully.
     return response
+
+@router.get("", response_model=list[ReferenceGauge])
+def get_all_gauges():
+    """
+    Returns a list of all official INDOFLOODS gauges.
+    """
+    gauges = gauge_service.get_all_gauges()
+    return gauges

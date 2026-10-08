@@ -110,3 +110,16 @@ class GaugeReferenceService:
             within_model_coverage=True,
             gauge_features=features
         )
+
+    def get_all_gauges(self):
+        if self.merged_df is None or self.merged_df.empty:
+            return []
+        
+        gauges = []
+        for _, row in self.merged_df.iterrows():
+            gauges.append({
+                "gauge_id": str(row['GaugeID']),
+                "latitude": float(row['Latitude']),
+                "longitude": float(row['Longitude'])
+            })
+        return gauges
