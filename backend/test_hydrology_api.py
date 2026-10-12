@@ -39,8 +39,8 @@ def test_invalid_coordinates_missing_station():
 def test_water_level_not_in_ml_features():
     # Confirm that water_level is NOT part of the 118 features expected by the model
     # We load the pipeline directly to verify
-    import joblib
-    pipe = joblib.load('ml/models/flood_severity_model.joblib')
+    from app.services.prediction import load_model
+    pipe = load_model()
     num_cols = list(pipe.named_steps['preprocessor'].transformers_[0][2])
     cat_cols = list(pipe.named_steps['preprocessor'].transformers_[1][2])
     all_cols = num_cols + cat_cols

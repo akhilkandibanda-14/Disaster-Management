@@ -61,7 +61,8 @@ def test_hydrology_independence():
 
 def test_ml_contract_118_features():
     # Verify the model exactly uses 118 raw features
-    pipe = joblib.load('ml/models/flood_severity_model.joblib')
+    from app.services.prediction import load_model
+    pipe = load_model()
     num_cols = list(pipe.named_steps['preprocessor'].transformers_[0][2])
     cat_cols = list(pipe.named_steps['preprocessor'].transformers_[1][2])
     total_raw_features = len(num_cols) + len(cat_cols)

@@ -6,9 +6,25 @@ from datetime import date
 
 logger = logging.getLogger(__name__)
 
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
 class RoadNetworkService:
     def __init__(self, data_dir: str = "data/raw/roads"):
-        self.data_dir = data_dir
+        candidate = Path(data_dir)
+        if candidate.is_absolute() and candidate.exists():
+            self.data_dir = str(candidate)
+        elif candidate.exists():
+            self.data_dir = str(candidate.resolve())
+        elif (PROJECT_ROOT / candidate).exists():
+            self.data_dir = str((PROJECT_ROOT / candidate).resolve())
+        else:
+            clean_parts = [part for part in candidate.parts if part != '..']
+            if clean_parts and (PROJECT_ROOT / Path(*clean_parts)).exists():
+                self.data_dir = str((PROJECT_ROOT / Path(*clean_parts)).resolve())
+            else:
+                self.data_dir = str((PROJECT_ROOT / candidate).resolve())
         self.graph_path = os.path.join(self.data_dir, "hyderabad_road_network.graphml")
         self.G = None
         self.is_loaded = False

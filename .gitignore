@@ -2,6 +2,8 @@
 .venv/
 __pycache__/
 *.py[cod]
+.pytest_cache/
+backend/.pytest_cache/
 
 # Environment and secrets
 .env
@@ -14,6 +16,7 @@ frontend/dist/
 ml/models/*.joblib
 ml/models/*.pkl
 
-# Local data
+# Local data & caches
 *.sqlite3
 *.graphml
+backend/cache/

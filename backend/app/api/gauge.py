@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Query
-from app.schemas.gauge import NearestGaugeResponse
+from app.schemas.gauge import NearestGaugeResponse, ReferenceGauge
 from app.services.gauge_reference import GaugeReferenceService
 
 router = APIRouter()

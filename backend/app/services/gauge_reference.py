@@ -4,14 +4,27 @@ import pandas as pd
 from typing import Optional
 from app.schemas.gauge import NearestGaugeResponse, Coordinates, ReferenceGauge
 
+from pathlib import Path
+
 class GaugeReferenceService:
     def __init__(self, data_dir: str = None):
+        base_path = Path(__file__).resolve().parents[3]
         if data_dir is None:
-            # Assuming this is run from backend/ dir or project root
-            base_path = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-            self.data_dir = os.path.join(base_path, 'data', 'raw', 'indofloods')
+            self.data_dir = str(base_path / 'data' / 'raw' / 'indofloods')
         else:
-            self.data_dir = data_dir
+            candidate = Path(data_dir)
+            if candidate.is_absolute() and candidate.exists():
+                self.data_dir = str(candidate)
+            elif candidate.exists():
+                self.data_dir = str(candidate.resolve())
+            elif (base_path / candidate).exists():
+                self.data_dir = str((base_path / candidate).resolve())
+            else:
+                clean_parts = [part for part in candidate.parts if part != '..']
+                if clean_parts and (base_path / Path(*clean_parts)).exists():
+                    self.data_dir = str((base_path / Path(*clean_parts)).resolve())
+                else:
+                    self.data_dir = str(candidate)
         
         self.max_allowed_distance_km = 50.0
         self.gauges_df = None
