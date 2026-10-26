@@ -1,0 +1,48 @@
+{
+  "dataset_id": "BHUVAN-NRSC-HYD-OCT2020",
+  "title": "ISRO / NRSC Bhuvan Flood Inundation Assessment: Hyderabad October 2020 Event",
+  "publisher": "National Remote Sensing Centre (NRSC), Indian Space Research Organisation (ISRO)",
+  "portal_url": "https://bhuvan-app1.nrsc.gov.in/disaster/disaster.php",
+  "documentation_url": "https://www.nrsc.gov.in",
+  "disaster_type": "URBAN_FLASH_FLOOD",
+  "meteorological_trigger": "Deep Depression BOB 02 (Bay of Bengal)",
+  "event_period_normalized": {
+    "rainfall_start_iso": "2020-10-12T18:30:00Z",
+    "rainfall_peak_iso": "2020-10-14T00:30:00Z",
+    "satellite_observation_iso": "2020-10-18T05:00:00Z"
+  },
+  "spatial_coverage": {
+    "geographic_region": "Greater Hyderabad Municipal Corporation (GHMC) and Musi River floodplain",
+    "bounding_box_wgs84": [
+      78.3,
+      17.25,
+      78.65,
+      17.55
+    ],
+    "mapped_submergence_pockets": [
+      "Ramanthapur (Pedda Cheruvu overflow)",
+      "Saroornagar Cheruvu & Chintalkunta corridor",
+      "Meerpet Cheruvu / Almasguda nala basin",
+      "Jeedimetla Cheruvu / Fox Sagar drainage",
+      "Balapur / Al Jubail Colony / Hafiz Baba Nagar",
+      "Musi River Central Causeway Corridor (Chaderghat to Moosarambagh)",
+      "Falaknuma / Bandlaguda low-lying settlements"
+    ],
+    "pocket_count": 7
+  },
+  "remote_sensing_platform": {
+    "sensor_types": [
+      "Optical Cartosat",
+      "Sentinel-1 Synthetic Aperture Radar (SAR)"
+    ],
+    "resolution_m": 10.0,
+    "elevation_model": "CARTOSAT-1 DEM (10m grid)"
+  },
+  "format_available": "WMS / WFS Web Map Service layers & PDF Disaster Damage Assessment Reports",
+  "access_status": "MAP_VIEWER_AND_REPORT_ONLY",
+  "access_restrictions": "Disaster management support geoportal layer. Raw full-resolution GeoTIFF inundation rasters require authorized ISRO/NRSC nodal credentials and formal NDMA/State Government requisition.",
+  "data_classification": "HISTORICAL_INUNDATION",
+  "curation_notes": "Satellite flood extent represents open-water ponding visible on 18 Oct 2020. Clouds, heavy tree canopy, and dense urban building shadows can cause false negatives (sub-canopy or street-level under-bridge flooding undetected).",
+  "raw_checksum_sha256": "7e84cb166d1cfac01f5298bdfc76b664b053894103070bf87e1616f1a01e2d20",
+  "curated_at_utc": "2026-10-26T18:20:03Z"
+}

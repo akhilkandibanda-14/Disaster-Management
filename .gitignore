@@ -1,16 +1,31 @@
 # Python
 .venv/
+venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
 backend/.pytest_cache/
+*.log
 
-# Environment and secrets
+# Environment and secrets (strictly exclude all .env files across all subdirectories)
 .env
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+*.cert
+*.crt
+secrets/
 
-# Node
+# Node & Frontend
 node_modules/
 frontend/dist/
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+.vite/
+*.tsbuildinfo
 
 # ML artifacts
 ml/models/*.joblib
@@ -20,3 +35,6 @@ ml/models/*.pkl
 *.sqlite3
 *.graphml
 backend/cache/
+cache/
+.DS_Store
+Thumbs.db

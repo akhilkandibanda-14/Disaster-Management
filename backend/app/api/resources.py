@@ -23,6 +23,21 @@ def road_conditions(db: Session = Depends(get_db)) -> list[RoadConditionResponse
 
 @router.get("/disaster-alerts", response_model=list[AlertResponse])
 def disaster_alerts(db: Session = Depends(get_db)) -> list[AlertResponse]:
+    """
+    Returns active official emergency flood alerts.
+    Strictly filters for flood-management alerts, excluding non-flood disasters.
+    """
     if settings.demo_mode:
-        return demo_alerts()
-    return list(db.scalars(select(Alert).order_by(Alert.issued_at.desc())).all())
+        alerts = demo_alerts()
+    else:
+        alerts = list(db.scalars(select(Alert).order_by(Alert.issued_at.desc())).all())
+
+    allowed = {
+        "FLOOD",
+        "FLASH_FLOOD",
+        "URBAN_INUNDATION",
+        "WATERLOGGING",
+        "RIVER_OVERFLOW",
+        "FLOOD_RELATED_HEAVY_RAINFALL",
+    }
+    return [a for a in alerts if getattr(a, "disaster_type", "").upper() in allowed]

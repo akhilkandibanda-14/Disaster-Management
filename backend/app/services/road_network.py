@@ -1,4 +1,8 @@
 import os
+import math
+import threading
+import numpy as np
+from scipy.spatial import cKDTree
 import networkx as nx
 import osmnx as ox
 import logging
@@ -9,6 +13,16 @@ logger = logging.getLogger(__name__)
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+def haversine_distance_meters(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    R = 6371000.0  # Earth radius in meters
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+    a = math.sin(delta_phi / 2.0) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0) ** 2
+    c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
+    return R * c
 
 class RoadNetworkService:
     def __init__(self, data_dir: str = "data/raw/roads"):
@@ -27,18 +41,62 @@ class RoadNetworkService:
                 self.data_dir = str((PROJECT_ROOT / candidate).resolve())
         self.graph_path = os.path.join(self.data_dir, "hyderabad_road_network.graphml")
         self.G = None
+        self._node_ids = None
+        self._kdtree = None
         self.is_loaded = False
+        self._lock = threading.Lock()
+        self._load_error: str | None = None
         
-    def load_graph(self):
-        """Loads the static road graph from the pre-downloaded GraphML file."""
+    def load_graph(self) -> None:
+        """Loads the static road graph from the pre-downloaded GraphML file in a thread-safe manner."""
         if not self.is_loaded:
-            if not os.path.exists(self.graph_path):
-                raise FileNotFoundError(f"Road network graph not found at {self.graph_path}. Make sure it is downloaded.")
-            
-            logger.info("Loading static road network from %s...", self.graph_path)
-            self.G = ox.load_graphml(self.graph_path)
-            self.is_loaded = True
-            logger.info("Loaded road network with %d nodes and %d edges.", len(self.G.nodes), len(self.G.edges))
+            with self._lock:
+                if not self.is_loaded:
+                    if not os.path.exists(self.graph_path):
+                        self._load_error = f"Road network graph not found at {self.graph_path}. Make sure it is downloaded."
+                        raise FileNotFoundError(self._load_error)
+                    
+                    try:
+                        logger.info("Loading static road network from %s...", self.graph_path)
+                        self.G = ox.load_graphml(self.graph_path)
+                        self._node_ids = list(self.G.nodes())
+                        coords = np.array([[self.G.nodes[n].get('x', 0.0), self.G.nodes[n].get('y', 0.0)] for n in self._node_ids])
+                        self._kdtree = cKDTree(coords)
+                        self.is_loaded = True
+                        self._load_error = None
+                        logger.info("Loaded road network with %d nodes and %d edges.", len(self.G.nodes), len(self.G.edges))
+                    except Exception as e:
+                        self.G = None
+                        self._node_ids = None
+                        self._kdtree = None
+                        self.is_loaded = False
+                        self._load_error = str(e)
+                        logger.error("Failed to load road network from %s: %s", self.graph_path, e)
+                        raise
+
+    def load_graph_safe(self) -> bool:
+        """Loads the road graph safely without throwing unhandled exceptions, suitable for startup lifespan."""
+        try:
+            self.load_graph()
+            return True
+        except FileNotFoundError as e:
+            logger.warning(
+                "Road network graph not found on startup: %s. Evacuation routing will be unavailable until downloaded.",
+                e,
+            )
+            return False
+        except Exception as e:
+            logger.error("Error loading road network on startup: %s", e)
+            return False
+
+    def _reset_state_for_testing(self) -> None:
+        """Resets in-memory graph state for test isolation."""
+        with self._lock:
+            self.G = None
+            self._node_ids = None
+            self._kdtree = None
+            self.is_loaded = False
+            self._load_error = None
 
     def get_metadata(self) -> dict:
         self.load_graph()
@@ -68,13 +126,18 @@ class RoadNetworkService:
         if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
             raise ValueError("Invalid latitude or longitude.")
         
-        # In newer osmnx, nearest_nodes expects G, X, Y
-        # X is longitude, Y is latitude
-        node_id, dist_meters = ox.distance.nearest_nodes(self.G, X=longitude, Y=latitude, return_dist=True)
-            
-        node_data = self.G.nodes[node_id]
-        node_lat = node_data.get('y', 0.0)
-        node_lon = node_data.get('x', 0.0)
+        if self._kdtree is not None and self._node_ids is not None:
+            _, idx = self._kdtree.query([longitude, latitude])
+            node_id = self._node_ids[idx]
+            node_data = self.G.nodes[node_id]
+            node_lat = float(node_data.get('y', 0.0))
+            node_lon = float(node_data.get('x', 0.0))
+            dist_meters = haversine_distance_meters(latitude, longitude, node_lat, node_lon)
+        else:
+            node_id, dist_meters = ox.distance.nearest_nodes(self.G, X=longitude, Y=latitude, return_dist=True)
+            node_data = self.G.nodes[node_id]
+            node_lat = float(node_data.get('y', 0.0))
+            node_lon = float(node_data.get('x', 0.0))
         
         distance_km = dist_meters / 1000.0
         

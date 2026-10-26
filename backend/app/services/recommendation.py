@@ -45,7 +45,7 @@ def _make_recommendation(user_latitude: float, user_longitude: float, shelter: S
         distance_km=round(distance, 2),
         estimated_travel_minutes=max(1, round(distance / 0.45)),
         breakdown=breakdown,
-        reason=f"{shelter.risk_level} disaster risk, {shelter.available_capacity} spaces available, and a {round(road_safety)}% road-safety score.",
+        reason=f"{shelter.risk_level} flood risk, {shelter.available_capacity} spaces available, and a {round(road_safety)}% road-safety score.",
         source="DEMO / SIMULATED DATA",
     )
 

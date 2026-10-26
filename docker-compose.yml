@@ -1,14 +1,76 @@
+# =============================================================================
+# SafeMap AI — Multi-Container Deployment Orchestration
+# Services: PostgreSQL (PostGIS), FastAPI Backend, Nginx React Frontend
+# =============================================================================
+
 services:
   postgres:
     image: postgis/postgis:16-3.4
+    container_name: safemap-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: disaster_management
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d disaster_management"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: safemap-backend
+    restart: unless-stopped
+    environment:
+      APP_ENV: ${APP_ENV:-demonstration}
+      DEMO_MODE: ${DEMO_MODE:-true}
+      DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/disaster_management
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-safemap-admin-dev-key}
+      ANALYST_API_KEY: ${ANALYST_API_KEY:-safemap-analyst-dev-key}
+      WEATHER_API_KEY: ${WEATHER_API_KEY:-}
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-}
+      CORS_ORIGINS: '["http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:80"]'
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount curated datasets, raw road network graph, and ML model artifacts
+      - ./data:/app/data:ro
+      - ./ml/models:/app/ml/models:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: safemap-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
 volumes:
   postgres_data:

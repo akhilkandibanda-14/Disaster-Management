@@ -1,0 +1,286 @@
+{
+  "type": "FeatureCollection",
+  "metadata": {
+    "dataset_id": "HYD-FLOOD-ZONES-GEOJSON",
+    "title": "Curated Hyderabad Published Flood-Prone Vulnerability Zones",
+    "publisher": "GHMC Disaster Management Cell & MRDCL (Curated by SafeMap AI)",
+    "data_classification": "HISTORICAL_VULNERABILITY",
+    "data_status": "PUBLIC_UNVERIFIED",
+    "crs": "urn:ogc:def:crs:OGC:1.3:CRS84",
+    "raw_checksum_sha256": "27f3b5e9ef8ebe8bee239b166c747afb115b6fbe13f6a623250c2f586032e39a",
+    "curated_at_utc": "2026-10-26T18:20:03Z",
+    "total_features": 5
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "id": "HYD-FZ-001",
+      "properties": {
+        "hazard_id": "HYD-FZ-001",
+        "hazard_type": "RIVER_OVERFLOW",
+        "title": "Musi River Central Causeway Inundation Corridor",
+        "severity": "HIGH",
+        "description": "Critical low-level causeway inundation zone spanning Chaderghat bridge to Moosarambagh causeway. Subject to rapid flash submergence during upstream reservoir releases from Osman Sagar and Himayat Sagar.",
+        "area_name": "Chaderghat - Moosarambagh Causeway Corridor",
+        "district": "Hyderabad",
+        "source_name": "GHMC Disaster Management & MRDCL Published Hydrology Survey",
+        "source_url": "https://www.telangana.gov.in",
+        "published_date": "2024-08-15",
+        "data_status": "PUBLIC_UNVERIFIED",
+        "verification_note": "Historical river flood zone. Floods when Musi river discharge exceeds 12,000 cusecs.",
+        "published_date_iso": "2024-08-15T00:00:00Z",
+        "crs": "EPSG:4326 (WGS84)",
+        "data_classification": "HISTORICAL_VULNERABILITY",
+        "raw_checksum_sha256": "27f3b5e9ef8ebe8bee239b166c747afb115b6fbe13f6a623250c2f586032e39a",
+        "curated_at_utc": "2026-10-26T18:20:03Z"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              78.477,
+              17.3775
+            ],
+            [
+              78.4855,
+              17.3815
+            ],
+            [
+              78.498,
+              17.382
+            ],
+            [
+              78.509,
+              17.378
+            ],
+            [
+              78.511,
+              17.381
+            ],
+            [
+              78.4995,
+              17.386
+            ],
+            [
+              78.486,
+              17.3855
+            ],
+            [
+              78.4775,
+              17.381
+            ],
+            [
+              78.477,
+              17.3775
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "HYD-FZ-002",
+      "properties": {
+        "hazard_id": "HYD-FZ-002",
+        "hazard_type": "FLOOD_ZONE",
+        "title": "Moosa Nagar - Shankarnagar Low-Lying Riverbed Settlement Zone",
+        "severity": "HIGH",
+        "description": "High-vulnerability riverbed settlement zone on the northern bank of the Musi River. Experiences severe backwater stagnation and direct inundation during monsoon peak flows.",
+        "area_name": "Moosa Nagar / Shankarnagar",
+        "district": "Hyderabad",
+        "source_name": "MRDCL Field Survey & TISS Flood Vulnerability Assessment",
+        "source_url": "https://www.telangana.gov.in",
+        "published_date": "2024-08-15",
+        "data_status": "PUBLIC_UNVERIFIED",
+        "verification_note": "High vulnerability settlement sector within 50m of river channel boundary.",
+        "published_date_iso": "2024-08-15T00:00:00Z",
+        "crs": "EPSG:4326 (WGS84)",
+        "data_classification": "HISTORICAL_VULNERABILITY",
+        "raw_checksum_sha256": "27f3b5e9ef8ebe8bee239b166c747afb115b6fbe13f6a623250c2f586032e39a",
+        "curated_at_utc": "2026-10-26T18:20:03Z"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              78.488,
+              17.3825
+            ],
+            [
+              78.4965,
+              17.383
+            ],
+            [
+              78.4975,
+              17.3875
+            ],
+            [
+              78.489,
+              17.387
+            ],
+            [
+              78.488,
+              17.3825
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "HYD-FZ-003",
+      "properties": {
+        "hazard_id": "HYD-FZ-003",
+        "hazard_type": "RIVER_OVERFLOW",
+        "title": "Bapu Ghat - Langar House Confluence Inundation Zone",
+        "severity": "MODERATE",
+        "description": "Hydraulic confluence sector where the Esa River merges with the Musa River. Subject to backwater spreading into Langar House and Hyderguda low pockets during high runoff.",
+        "area_name": "Bapu Ghat / Langar House",
+        "district": "Hyderabad",
+        "source_name": "GHMC Stormwater Master Plan & TRAC Basin Studies",
+        "source_url": "https://www.telangana.gov.in",
+        "published_date": "2024-08-15",
+        "data_status": "PUBLIC_UNVERIFIED",
+        "verification_note": "Confluence floodplain zone; vulnerable to backwater inundation.",
+        "published_date_iso": "2024-08-15T00:00:00Z",
+        "crs": "EPSG:4326 (WGS84)",
+        "data_classification": "HISTORICAL_VULNERABILITY",
+        "raw_checksum_sha256": "27f3b5e9ef8ebe8bee239b166c747afb115b6fbe13f6a623250c2f586032e39a",
+        "curated_at_utc": "2026-10-26T18:20:03Z"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              78.417,
+              17.373
+            ],
+            [
+              78.428,
+              17.374
+            ],
+            [
+              78.431,
+              17.381
+            ],
+            [
+              78.422,
+              17.3825
+            ],
+            [
+              78.416,
+              17.377
+            ],
+            [
+              78.417,
+              17.373
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "HYD-FZ-004",
+      "properties": {
+        "hazard_id": "HYD-FZ-004",
+        "hazard_type": "WATER_STAGNATION",
+        "title": "Hussain Sagar Surplus Nala Inundation Corridor",
+        "severity": "MODERATE",
+        "description": "Major storm-water discharge corridor carrying surplus overflow from Hussain Sagar through Ashok Nagar and Himayatnagar towards Musi River. Prone to localized water-logging during downpours >50mm/hr.",
+        "area_name": "Domalguda / Ashok Nagar Nala Belt",
+        "district": "Hyderabad",
+        "source_name": "GHMC Stormwater Drainage Zone 12/13 Survey",
+        "source_url": "https://www.telangana.gov.in",
+        "published_date": "2024-08-15",
+        "data_status": "PUBLIC_UNVERIFIED",
+        "verification_note": "Surplus discharge channel buffer; localized street inundation hotspot.",
+        "published_date_iso": "2024-08-15T00:00:00Z",
+        "crs": "EPSG:4326 (WGS84)",
+        "data_classification": "HISTORICAL_VULNERABILITY",
+        "raw_checksum_sha256": "27f3b5e9ef8ebe8bee239b166c747afb115b6fbe13f6a623250c2f586032e39a",
+        "curated_at_utc": "2026-10-26T18:20:03Z"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              78.485,
+              17.401
+            ],
+            [
+              78.494,
+              17.4
+            ],
+            [
+              78.497,
+              17.412
+            ],
+            [
+              78.489,
+              17.413
+            ],
+            [
+              78.485,
+              17.401
+            ]
+          ]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "HYD-FZ-005",
+      "properties": {
+        "hazard_id": "HYD-FZ-005",
+        "hazard_type": "WATER_STAGNATION",
+        "title": "Begumpet - Brahmanwadi Stormwater Drainage Bottleneck",
+        "severity": "MODERATE",
+        "description": "Constrained storm-water bottleneck where multiple northern drainage tributaries converge near the railway underbridge and Prakash Nagar nala. Frequent road submergence during intense localized showers.",
+        "area_name": "Begumpet / Rasoolpura",
+        "district": "Hyderabad",
+        "source_name": "GHMC Disaster Management Cell Inundation Points Inventory",
+        "source_url": "https://www.telangana.gov.in",
+        "published_date": "2024-08-15",
+        "data_status": "PUBLIC_UNVERIFIED",
+        "verification_note": "Known severe water stagnation point; railway underpass flood hazard.",
+        "published_date_iso": "2024-08-15T00:00:00Z",
+        "crs": "EPSG:4326 (WGS84)",
+        "data_classification": "HISTORICAL_VULNERABILITY",
+        "raw_checksum_sha256": "27f3b5e9ef8ebe8bee239b166c747afb115b6fbe13f6a623250c2f586032e39a",
+        "curated_at_utc": "2026-10-26T18:20:03Z"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              78.468,
+              17.437
+            ],
+            [
+              78.479,
+              17.438
+            ],
+            [
+              78.478,
+              17.447
+            ],
+            [
+              78.469,
+              17.446
+            ],
+            [
+              78.468,
+              17.437
+            ]
+          ]
+        ]
+      }
+    }
+  ]
+}

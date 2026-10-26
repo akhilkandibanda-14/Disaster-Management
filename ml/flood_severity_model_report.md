@@ -18,7 +18,7 @@
 - Test Recall: 0.4368
 - Test F1: 0.4850
 - Test ROC-AUC: 0.6682
-- Grouped CV F1 Mean: 0.3405 ± 0.1377
+- Grouped CV F1 Mean: 0.3405 Â± 0.1377
 
 ## 4. Confusion Matrix
 ```

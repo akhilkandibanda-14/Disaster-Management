@@ -4,13 +4,24 @@
 The routing service utilizes local OpenStreetMap (OSM) topological data. The road graph is not downloaded on the fly but is pre-extracted.
 
 ## Local Graph File
-The graph is loaded from `data/raw/roads/hyderabad_road_network.graphml` using `NetworkX` via `OSMnx`. The service caches this graph in memory to answer routing queries optimally.
+The graph is loaded from `data/raw/roads/hyderabad_road_network.graphml` using `NetworkX` via `OSMnx`. The service caches this graph in memory to answer routing queries optimally. Thread-safe initialization ensures concurrent requests cannot load multiple graph instances or mutate the underlying network.
 
-## Pathfinding Algorithm
-The service uses Dijkstra's shortest path algorithm (via `networkx.shortest_path`) to find the optimal path through the directed road network graph. 
+## Pathfinding & Hazard Avoidance Algorithm
+The service uses Dijkstra's shortest path algorithm (via `networkx.shortest_path`) over a dynamic, read-only graph view constructed with `networkx.restricted_view`.
 
-## Routing Objective
-The current routing objective strictly minimizes **road network distance** (using the `length` attribute on graph edges). 
+### How Hazard Avoidance Works:
+1. **Hazard Ingestion**: Active road conditions (e.g., from citizen reports, field updates, or simulated demo data) with impassable status (`FLOODED`, `BLOCKED`, `DANGEROUS`) are provided to `build_graph_route`.
+2. **Safe Road Matching**:
+   - Each hazard's `(latitude, longitude)` coordinate is snapped to the nearest road network node and incident edge segments.
+   - If a `road_name` is provided, candidate edges are cross-referenced against the road name.
+   - Ambiguous matches (where nearby edges explicitly conflict with reported names) are handled conservatively: the router does not claim a road was avoided unless its affected graph edges were identified.
+   - Identified road segments (in both directions) are excluded from the pathfinding view.
+3. **Detour Recalculation**:
+   - The route is computed using `nx.restricted_view(G, nodes=[], edges=blocked_edges)`.
+   - If the shortest unconstrained route intersected a hazard, the service safely recalculates an alternative route avoiding all blocked segments. The response sets `road_condition_status = "HAZARDS_AVOIDED"`.
+4. **No-Safe-Route Guarantee**:
+   - If all viable paths traverse reported flooded or blocked roads (raising `nx.NetworkXNoPath` on the restricted view while an unconstrained path exists), the API returns `route_status = "NO_SAFE_ROUTE"` and `road_condition_status = "BLOCKED"`.
+   - The system **never** silently falls back to a route that crosses a known blocked or flooded road.
 
 ## Nearest-Node Snapping
 Because users and shelters may not be located perfectly on a road node, their coordinates are snapped to the nearest road network node using spatial indexing in OSMnx. 
@@ -26,15 +37,10 @@ The distance returned is the precise physical length of the graph edges along th
 ## Duration Limitations
 Because real-time speed data is not currently available, `estimated_duration_min` is explicitly returned as `null`. We do not fabricate average speeds or traffic data.
 
-## Road-Condition Limitation
-The routing service has a strict **STATIC** boundary constraint. It currently returns `road_condition_status = "UNKNOWN"`. 
-**Why route is NOT currently a verified flood-safe route:**
-- We do not know if the generated path crosses currently flooded areas.
-- We do not penalize edges for high flood risk or reported blockages.
-- The route represents the theoretically shortest physical path, not necessarily the safest path in an active disaster.
-
 ## API Key Requirement
-No API keys are required to use this routing system. It is fully disconnected from Mapbox, Google Maps, and Waze.
+No external API keys are required to use this routing system. It is fully disconnected from Mapbox, Google Maps, and Waze.
 
-## Future Dynamic Road-Condition Integration
-To make the route flood-safe, Step 11+ could integrate dynamic traffic or hydrology indicators as additional weight penalties (e.g. `weight = length + (flood_severity * 1000)`). Until verified real-time road conditions exist, the router explicitly states conditions are unknown.
+## Remaining Limitations
+1. **Sparse / Static OSM Naming**: In OSM, some segments lack explicit `name` tags (e.g. minor links or service tracks). In such cases, proximity snapping within conservative thresholds is used.
+2. **Elevation & Dynamic Hydrology Penalties**: Edge weights currently use binary exclusion (passable vs. blocked). Dynamic continuous cost weighting (e.g. `weight = length + (flood_depth * factor)`) can be integrated in future milestones when continuous hydrologic models are linked.
+3. **Live Condition Sourcing**: In the absence of an active real-time municipal telemetry feed, road conditions are populated via the database or explicitly labeled `[DEMO]` data.

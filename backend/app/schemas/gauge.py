@@ -18,3 +18,7 @@ class NearestGaugeResponse(BaseModel):
     within_model_coverage: bool
     message: Optional[str] = None
     gauge_features: Optional[Dict[str, Any]] = None
+    gauges_within_50km_count: int = 0
+    catchment_gauges_count: int = 0
+
+

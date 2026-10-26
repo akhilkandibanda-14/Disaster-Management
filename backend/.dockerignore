@@ -1,0 +1,28 @@
+# Python bytecode & caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+*.log
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment files and credentials (never copy secrets into images)
+.env
+.env.*
+*.pem
+*.key
+*.cert
+
+# Test suites and test outputs
+test_*.py
+scratch_*.py
+.coverage
+htmlcov/
+
+# Local data caches (mounted via Docker Compose volumes)
+cache/
+*.sqlite3

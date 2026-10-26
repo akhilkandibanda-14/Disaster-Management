@@ -513,9 +513,343 @@ Currently, the repository contains no static screenshot image assets. For formal
 
 ---
 
-## 20. Future Work
+---
 
-- **Central Water Commission (CWC) Integration:** Ingest live hydrological river level telemetry from official CWC and state flood monitoring stations.
-- **Dynamic Road Impassability Engine:** Integrate real-time urban drainage reports, municipal waterlogging complaints, and satellite flood extents to dynamically sever edges in the routing graph.
-- **Verified Shelter Management Portal:** Provide an administrative view for municipal officers to update live bed availability, power backup status, and medical supplies.
-- **Regional Model Retraining:** Retrain hydrological models on local Godavari and Krishna river basin data to bring Telangana and Andhra Pradesh into full model coverage.
+## 20. Milestone 6: Local Flood Data Acquisition & Dataset Curation
+
+Building upon Milestones 1–5, SafeMap AI establishes a reproducible, source-traceable collection of historical rainfall, flood-event, and inundation evidence for Hyderabad, Telangana, while strictly upholding the 50 km model-coverage guard and non-fabrication invariants.
+
+### 1. Verified Public Source Inventory
+All sources were audited for availability, resolution, and licensing:
+- **Telangana DES (`DES-HYD`)**: Annual & seasonal rainfall statistics (1970–2023). Verified and downloaded. Classification: `OBSERVATION`.
+- **Telangana TSDPS (`TSDPS-AWS`)**: High-density AWS telemetry (~100+ stations in GHMC). Daily summaries viewable; raw sub-daily time-series require institutional credentials. Classification: `OBSERVATION`.
+- **ISRO/NRSC Bhuvan (`BHUVAN-NRSC`)**: Satellite inundation assessment for October 2020 event (10 m Cartosat/Sentinel-1 SAR). Map viewer / PDF reports public; raw GeoTIFF rasters require nodal credentials. Classification: `HISTORICAL_INUNDATION`.
+- **NDMA SACHET (`NDMA-SACHET`)**: Common Alerting Protocol (CAP) emergency warning feed. Historical warnings archived by TG-SDMA. Classification: `OFFICIAL_ALERT`.
+- **Copernicus GloFAS (`GLOFAS-MUSI`)**: Modelled Musi River daily discharge simulation (Oct 2020). Classification: `MODEL_FORECAST` (Uncalibrated; never substituted for physical gauge observations).
+- **Open-Meteo ERA5 (`ERA5-HYD`)**: Reanalysis meteorological parameters for Oct 2020. Classification: `MODELLED`.
+- **GHMC & MRDCL Flood Zones (`HYD-FLOOD-ZONES`)**: Published survey flood-prone polygons. Classification: `HISTORICAL_VULNERABILITY` (`PUBLIC_UNVERIFIED`).
+
+### 2. Machine-Readable Manifest & Curation Pipeline
+All raw data files (`data/raw/`) are separated from curated outputs (`data/curated/`).
+- **Master Manifest**: [`data/data_manifest.json`](data/data_manifest.json) tracks SHA-256 hashes, source URLs, access terms, and record counts.
+- **CLI Runner**: `python backend/run_data_curation.py` executes all 6 importers idempotently.
+
+### 3. Curated Historical Flood Event Catalogue (1908–2023)
+Stored in [`data/curated/hyderabad_flood_event_catalogue.json`](data/curated/hyderabad_flood_event_catalogue.json) and `.csv`:
+- Documents 8 distinct historical flood events (1908, 2000, 2008, 2016, 2020, 2021, 2022, 2023).
+- Strict non-derivation invariants: District rainfall aggregates are not assigned to street levels; vulnerability polygons are not treated as proof of event dates; model forecasts are not treated as observed floods.
+
+### 4. Local Data Readiness & Scientific Gap Audit
+- **Audit Script**: `python backend/evaluate_hyderabad_data_readiness.py`
+- **Comprehensive Report**: [`docs/local_data_readiness_and_validation_report.md`](docs/local_data_readiness_and_validation_report.md)
+- **Status**: `INSUFFICIENT_LOCAL_DATA` — Operational predictions suppressed for Hyderabad.
+- **Nearest INDOFLOODS Gauge**: `INDOFLOODS-gauge-916` at **71.77 km** (River Manjra, Godavari Basin), hydrologically disconnected from the Musi River (Krishna Basin).
+- **Statistical Power Limit**: With only $N=8$ positive events across 115 years and zero non-flood negative controls, the Wilson 95% Confidence Interval width spans **51.9%** (statistical power $< 0.12$). Model training or validation on this dataset would be statistically invalid.
+
+### 5. Verified Data Curation Endpoints
+- `GET /data-curation/manifest`: Returns machine-readable dataset manifest and provenance audit.
+- `GET /data-curation/historical-events`: Returns the 8 curated historical flood events (with optional `classification` and `confidence` query filters).
+- `GET /data-curation/readiness-audit`: Returns the local readiness assessment and gap report.
+
+---
+
+## 21. Milestone 7: Historical Flood Evidence Audit & Dataset QA
+
+Milestone 7 conducts a rigorous evidence audit of the eight-event Hyderabad historical flood catalogue (`data/curated/hyderabad_flood_event_catalogue.json` and `.csv`) to verify that every event date, rainfall measurement, river discharge value, classification, confidence rating, and source attribution is supported by traceable physical evidence.
+
+### 1. Verification Outcome & Evidence Summary
+- **Audited Events**: 8 distinct historical flood occurrences (1908–2023).
+- **Verification States**: **0 Fully Verified**, **8 Partially Verified**, **0 Unverified**.
+- **Reasoning**: While precipitation and event dates are verified through IMD records, state gazettes, and TSDPS automated weather stations (AWS), **Hyderabad lacks continuous physical stream-gauge telemetry on the Musi River**.
+- **River Discharge Audit**:
+  - **Estimated Outflows**: 1908 (12,034 m³/s slope-area calculation by Sir M. Visvesvaraya), 2008 (480 m³/s reservoir release), 2020 (850 m³/s combined dam release), and 2022 (226.5 m³/s Himayat Sagar release) are strictly classified as `ESTIMATED`, not direct stream observations.
+  - **Unsupported Discharges Nullified**: For 2000 (1,250 cumec), 2016 (210 cumec), 2021 (95 cumec), and 2023 (85 cumec), flooding was caused by urban lake surplus nalas or street underpass waterlogging without riverine overflow. These numbers were nullified (`null`) in the observation field, classified as `UNVERIFIED`, and preserved with full rationale in `audit_trail`.
+- **Defensible Confidence Ratings**:
+  - `VERY_HIGH` ratings were eliminated across all entries.
+  - `HIGH` is retained exclusively for 2020 (corroborated by dual AWS telemetry and ISRO NRSC Bhuvan Sentinel-1 SAR water masks).
+  - `LOW` is assigned to 2008 (archived in physical departmental ledgers).
+  - All other events are rated `MEDIUM`.
+
+### 2. Comprehensive Provenance and Audit Trails
+Every record in `hyderabad_flood_event_catalogue.json` incorporates:
+- `provenance`: `source_title`, `publisher`, `publication_year`, `direct_url`, `citation_detail`, `evidence_note`, `measurement_classifications`, `verification_status`, and `unresolved_issues`.
+- `audit_trail`: `original_classification`, `original_confidence`, `original_reported_discharge_cumec`, and `correction_rationale`.
+
+### 3. Statistical Conclusions Audited
+- **Distinct Events**: Re-verified that the 8 events represent genuinely separate chronological episodes across 115 years.
+- **Exploratory Heuristic Status**: The 120 mm rainfall baseline (75% positive recall) is explicitly documented as an **exploratory retrospective heuristic**, not an operational predictive model.
+- **Undefined Specificity**: Due to the complete absence of negative control non-flood days, false-positive rate and specificity cannot be computed and remain `UNDEFINED`.
+- **Statistical Power & Sample Size**: On an $N=8$ sample, the Wilson 95% Confidence Interval width spans **51.9%** (statistical power $< 0.12$). Model training remains statistically indefensible.
+
+### 4. Frontend Transparency
+- In `OperationsDashboard.jsx`, the catalogue panel now displays an audited banner (`8 Audited Events · 8 Partially Verified · 0 Fully Verified`), colored measurement type tags (`[OBSERVED]`, `[SECONDARY_REPORTED]`, `[ESTIMATED]`, `[UNVERIFIED]`), evidence notes, and audit trail correction tooltips.
+
+### 5. Automated Verification Test Suite
+- `test_evidence_audit_m7.py`: 13 comprehensive tests validating provenance structures, measurement type rules, discharge nullifications, confidence downgrades, curation idempotency, and safety invariants.
+
+---
+
+## 22. Milestone 8: Institutional Data Acquisition & Evidence Intake
+
+Milestone 8 builds an institutional data intake and validation engine capable of ingesting, validating, standardizing, and tracking external evidence from government authorities (TSDPS, Telangana Irrigation & CAD, ISRO NRSC, IMD, GHMC DRF) in CSV, JSON, and GeoJSON formats, while preparing formal data-request packages and establishing scientific negative-control standards.
+
+### 1. Draft Institutional Data-Request Packages
+Four formal request packages were created with explicit research objectives, spatial/temporal parameters, schema requirements, and data governance terms, strictly marked `DRAFT INSTITUTIONAL DATA REQUEST — NOT YET SUBMITTED`:
+- **TSDPS AWS Sub-Daily Rainfall**: [template_tsdps_aws_rainfall.md](docs/data_requests/template_tsdps_aws_rainfall.md) (~100+ stations, 15-min and daily rainfall, QC flags, 2014–2024).
+- **Telangana I&CAD Musi River Hydrographs**: [template_irrigation_musi_river_stage_and_discharge.md](docs/data_requests/template_irrigation_musi_river_stage_and_discharge.md) (Osman Sagar, Himayat Sagar hourly sluice gate logs, reservoir levels, and Musi River causeway flood-stage benchmarks).
+- **ISRO/NRSC Bhuvan Inundation Rasters**: [template_nrsc_bhuvan_sar_inundation.md](docs/data_requests/template_nrsc_bhuvan_sar_inundation.md) (Level-3 Sentinel-1 SAR / Cartosat GeoTIFF water masks at 10 m resolution for 2016, 2020, 2022, 2023 flood peaks).
+- **Non-Flood Negative Control Observation Matrix**: [template_negative_control_observations.md](docs/data_requests/template_negative_control_observations.md) (Dual-source verification pairing IMD/TSDPS precipitation with GHMC Disaster Response Force zero-dewatering deployment logs).
+
+### 2. Validated Institutional Data-Intake Workflow
+The intake engine ([`backend/app/services/data_importers/institutional_intake.py`](backend/app/services/data_importers/institutional_intake.py)) provides a robust gatekeeper for external evidence:
+- **Format Support**: CSV, JSON (records or features), GeoJSON (`FeatureCollection`).
+- **Strict Validation Rules**:
+  - Coordinate range sanity check (`lat in [-90, 90]`, `lon in [-180, 180]`) and warning on coordinates outside Hyderabad metropolitan boundary.
+  - Timestamp ISO-8601 validation and historical epoch bounds (`1900 <= year <= 2026`).
+  - Unit normalization (`cm -> mm`, `cusec -> m³/s`, `ft -> m`) with raw observed values preserved alongside normalized values.
+  - Explicit missing-value sentinel handling (`-999`, `-9999`, `NA`, `NULL`, `NaN` preserved as `None` — never imputed as zero rainfall).
+  - Duplicate record detection across composite keys (`(station_id, timestamp)`).
+  - Evidence categorization: `OBSERVED`, `SECONDARY_REPORTED`, `ESTIMATED`, `MODELLED`, `HISTORICAL_VULNERABILITY`, `DEMO`.
+- **Actionable Error Reporting**: Row-by-row error diagnostics with row index, invalid field, observed value, and constraint violated.
+- **Idempotency & Cryptographic Ledger**: SHA-256 fingerprinting prevents re-importing duplicate payloads; validated batches are recorded in [`data/curated/institutional/intake_ledger.json`](data/curated/institutional/intake_ledger.json).
+
+### 3. Negative-Control Data Management & Evidence Rules
+Documented in [`docs/negative_control_data_requirements.md`](docs/negative_control_data_requirements.md) and implemented in [`negative_control_manager.py`](backend/app/services/data_importers/negative_control_manager.py):
+- **5-State Epoch Taxonomy**:
+  1. `CONFIRMED_FLOOD`: Backed by physical gauge, satellite inundation mask, or municipal emergency declaration.
+  2. `DOCUMENTED_NON_FLOOD`: Explicitly verified non-flood period meeting Rule A (dry day with total daily rain $< 2.5$ mm across all stations) or Rule B (wet day $\ge 2.5$ mm with corroborated municipal zero-incident logs).
+  3. `UNKNOWN_OR_UNCLASSIFIED`: Rainy periods without flood reports or official negative confirmation (Cardinal Rule: *Silence is not evidence of non-flooding*).
+  4. `MISSING_OBSERVATION`: Station outages, uncalibrated periods, or missing telemetry.
+  5. `MODELLED_ESTIMATE`: Hydrological reanalyses (e.g. GloFAS, ERA5) kept strictly segregated from physical ground truth.
+- **Strict Anti-Fabrication Invariant**: No synthetic negative controls are generated.
+
+### 4. Interactive Operations Dashboard Upgrades
+The administrative frontend ([`frontend/src/components/OperationsDashboard.jsx`](frontend/src/components/OperationsDashboard.jsx)) features:
+- **Available Datasets vs. Institutional Requests**: Side-by-side cards tracking 6 verified datasets against 4 draft requisitions.
+- **Interactive Dry-Run Data Intake**: Upload CSV files or click pre-loaded valid/invalid sample buttons to run real-time backend validation.
+- **Negative Control Status & Taxonomy**: Displays required sample sizes ($N_{ctrl} \ge 24$) and 5-state taxonomy breakdown.
+
+### 5. Automated Test Suite (209/209 Tests Passing)
+- `test_institutional_intake_m8.py`: 20 unit and integration tests verifying intake validation, unit normalization, coordinate boundaries, idempotency, negative control rules, API contracts, and safety safeguards.
+- Full regression verification: 209 passing tests across all 8 milestones.
+
+---
+
+## 23. Flood-Only Scope Policy & Audit Boundary
+
+SafeMap AI is strictly and exclusively dedicated to flood management, flood-related hazards, and safe evacuation during flood emergencies. It does not operate as or present itself as a general multi-disaster system.
+
+### 1. Scope Boundaries:
+- **Supported Hazards**: Inundation, river overflow, urban waterlogging/stagnation, nala breach, flash flooding, reservoir/dam discharges, and flood-related heavy rainfall warnings.
+- **Explicitly Excluded Disasters**: Tsunamis and coastal surges, earthquakes and seismic events, standalone cyclones/hurricanes, tornadoes, wildfires/forest fires, landslides/avalanches, droughts, and volcanoes.
+- **CAP/RSS Feed Filter**: Live NDMA SACHET alerting feeds are strictly filtered by validated classification (`classify_flood_alert`). Non-flood disasters and ambiguous or non-flood weather advisories (e.g. standalone lightning, light/moderate rain) are excluded from the active flood hazard map.
+- **Schema & Query Guardrails**: `HazardRecord` and `AlertResponse` schemas reject non-flood disaster types with actionable validation errors. Query parameters requesting unsupported disaster types on `/flood-hazards` return HTTP 400.
+- **Historical Provenance Preservation**: Archival and audit records referring to external meteorological triggers (such as Deep Depression BOB 02 in October 2020) are preserved solely as historical provenance and are not exposed as active non-flood disaster capabilities.
+
+---
+
+## 24. Milestone 10: Deployment Readiness and Security Hardening
+
+Prepares SafeMap AI for a **controlled demonstration or supervised municipal pilot** (GHMC / TG-SDMA). Milestone 10 does not claim production readiness for emergency-critical autonomous dispatch.
+
+### 1. Deployment Architecture Audit
+- Scanned and removed all developer-specific absolute paths (e.g. local workstation file URIs) from all documentation files.
+- All dataset and documentation references are now repository-relative.
+- Verified with ripgrep: zero absolute developer links remain in tracked files.
+
+### 2. Role-Based Access Control (RBAC)
+
+Implemented in [`backend/app/auth.py`](backend/app/auth.py):
+
+| Role | Access |
+|------|--------|
+| Public (no key) | `GET /flood-hazards`, `/evacuation-route`, `/weather`, `/shelters`, `/emergency-facilities`, `/health`, `/health/live`, `/health/ready`, and all read-only flood telemetry |
+| Analyst | `POST /data-curation/intake/validate` (dry-run), `GET /data-curation/intake/sources`, `GET /data-curation/intake/log` |
+| Admin | All analyst endpoints + `POST /data-curation/intake/commit`, `POST /emergency-facilities/{id}/verify` |
+
+- Dual header scheme: `X-API-Key: <key>` and `Authorization: Bearer <key>`
+- Constant-time comparison (`secrets.compare_digest`) prevents timing side-channel attacks.
+- HTTP 401 Unauthorized for missing/invalid keys; HTTP 403 Forbidden for insufficient role.
+- Production/staging environments strictly reject unauthenticated analyst-level requests.
+
+### 3. Production Configuration
+
+Reference configuration in [`backend/.env.example`](backend/.env.example) and [`frontend/.env.example`](frontend/.env.example):
+- `APP_ENV=production` defaults `DEMO_MODE=false` unless explicitly overridden.
+- Startup diagnostics warn if default dev API keys are detected in production (`safemap-admin-dev-key`, `safemap-analyst-dev-key`).
+- CORS origins are configurable via `CORS_ORIGINS` (JSON array or comma-separated string).
+- All `.env` and `.env.*` files are excluded from Git (only `.env.example` is tracked).
+
+### 4. Container Deployment Packaging
+
+| File | Purpose |
+|------|---------|
+| [`backend/Dockerfile`](backend/Dockerfile) | Python 3.11-slim, non-root user `safemap`, health check on `/health` |
+| [`frontend/Dockerfile`](frontend/Dockerfile) | Node 20 build → Alpine Nginx multi-stage |
+| [`frontend/nginx.conf`](frontend/nginx.conf) | SPA routing, security headers, gzip, `/healthz` probe |
+| [`docker-compose.yml`](docker-compose.yml) | Orchestrates PostgreSQL + backend + frontend with volumes, health checks, and env var injection |
+| [`backend/.dockerignore`](backend/.dockerignore) | Excludes `.env`, bytecode, tests, logs |
+| [`frontend/.dockerignore`](frontend/.dockerignore) | Excludes node_modules, dist |
+
+Data and ML artifacts are mounted read-only into the backend container (`./data:/app/data:ro`, `./ml/models:/app/ml/models:ro`).
+
+### 5. Operational Observability
+
+Implemented in [`backend/app/utils/observability.py`](backend/app/utils/observability.py):
+- **Structured JSON logging** (`log_structured_event`) with automatic secret redaction for keys matching `password/token/key/secret/auth/credential` patterns and URL query parameters.
+- **`SystemHealthMonitor`** tracking weather provider status (`OPERATIONAL` / `STALE` / `DEMO_FALLBACK` / `DEGRADED`) and hazard feed warnings.
+- **`GET /health`** cleanly separates `process` health from `external_feeds` health while preserving backward-compatible root keys.
+- **Container probes**: `GET /health/live` (liveness) and `GET /health/ready` (readiness).
+- **Startup diagnostics** via `run_startup_diagnostics()` emitting structured warnings if road network graph, ML model, or curated catalogue are absent.
+
+### 6. Automated Acceptance Tests (25/25 Passing)
+
+[`backend/test_deployment_readiness_m10.py`](backend/test_deployment_readiness_m10.py) — 25 tests across 8 classes:
+
+| Class | Tests |
+|-------|-------|
+| `TestStartupAndHealthDiagnostics` | Startup, /health process/feed separation, liveness/readiness probes |
+| `TestRoleBasedAccessControl` | Public access, commit 401/403, Bearer token, invalid key rejection |
+| `TestVerificationPromotionSafeguards` | Unauthenticated 401, analyst 403, missing evidence 400, admin success |
+| `TestProductionConfigurationGuards` | Production demo_mode=False, explicit override, CORS parsing, zero absolute paths |
+| `TestOperationalObservability` | Credential redaction, URL secret redaction, sanitized error responses |
+| `TestFloodRoutingAndHazardAvoidance` | Flooded road avoidance, FLOODED destination 409 |
+| `TestFloodOnlyScopeAndModelCoverageGuards` | Non-flood type rejection, Hyderabad MODEL_UNSUPPORTED |
+| `TestTruthInDataPreservation` | Unverified hospital caveats, DEMO facility labeling |
+
+### 7. Complete Test Suite: 270/270 Passing (Milestones 1–10)
+
+```
+270 passed, 41 warnings in ~147s
+```
+
+> [!CAUTION]
+> **Container execution was NOT verified** — Docker is not installed on the development machine. Dockerfile and Compose files have been reviewed for correctness but have not been built or run. Build and smoke-test containers on a Docker-enabled host before demonstration.
+
+> [!WARNING]
+> **Independent security audit not performed.** RBAC, secret redaction, CORS, and error sanitization have been implemented and tested functionally. No penetration test, third-party security review, or formal threat model has been conducted.
+
+
+
+---
+
+## 25. Milestone 11: Deployment Smoke Tests and Supervised Pilot Readiness
+
+Validates the complete application in its deployment configuration and establishes a documented, supervised demonstration protocol.
+
+### 1. Production Secret Hardening & Startup Refusal
+- Production startup (`APP_ENV=production`) strictly refuses default development keys (`safemap-admin-dev-key`, `safemap-analyst-dev-key`) or keys $<16$ characters, raising a clear diagnostic `RuntimeError`.
+- Production and demonstration modes are explicitly distinguished; `DEMO_MODE` automatically defaults to `False` in production.
+- Structured logging automatically masks passwords, Bearer tokens, and API keys to `[REDACTED]`.
+- All `.env.example` files contain only placeholder strings with zero live credentials.
+
+### 2. End-to-End User Acceptance Workflows (11 Verified)
+Verified through automated acceptance testing in [`backend/test_deployment_smoke_m11.py`](backend/test_deployment_smoke_m11.py):
+1. **Flood Map & Hazards**: Loads polygon hazard zones with coordinate bounds and metadata.
+2. **Official Flood Alerts**: Gathers official flood alerts with source timestamps (IMD / TSDPS).
+3. **Data Provenance**: Distinguishes `AUTHORITATIVE`, `PUBLIC_UNVERIFIED`, `DEMO`, and `STALE` data.
+4. **Evacuation Routing**: Computes valid shortest paths to selected emergency facilities.
+5. **Hazard Avoidance Detour**: Replaces shortest path with detour when crossing flooded road segments (`HAZARDS_AVOIDED`).
+6. **No Safe Route Invariant**: Returns `NO_SAFE_ROUTE` with clear error when all access routes are submerged.
+7. **Hazard Intersection Warning**: Evaluates point-in-polygon coordinates without implying that unmonitored locations are safe.
+8. **Truth-in-Facilities**: Strictly separates hospital identity, operational status verification, and bed capacity verification.
+9. **External Provider Resilience**: Gracefully handles third-party provider timeouts or outages without application crash.
+10. **Hyderabad Model Coverage Guard**: Strictly returns `MODEL_UNSUPPORTED` for Hyderabad queries (71.77 km from nearest gauge).
+11. **RBAC Security Boundaries**: Strictly enforces HTTP 401/403 on institutional dataset commits and verification promotions.
+
+### 3. Supervised Pilot Governance & Runbook
+Documented in [`docs/deployment_and_operations_guide.md`](docs/deployment_and_operations_guide.md):
+- **Supervised Pilot Checklist**: Intended users (GHMC DRF / TG-SDMA), supported use cases, data freshness limits, simulated data caveats, emergency fallback protocols (VHF radio Channel 1), and change authorization rules.
+- **Maintenance & Recovery Runbook**: Container startup/shutdown, log streaming, PostgreSQL & curated data backup/restore, API key rotation, provider failure recovery, safe road graph updates, and release rollbacks.
+
+### 4. Test Suite Summary
+- **Milestone 11 Suite**: 22 passed, 0 failed in 26.36s ([`backend/test_deployment_smoke_m11.py`](backend/test_deployment_smoke_m11.py))
+- **Total Backend Tests**: **292 passed**, 0 failed, 41 warnings in 146.12s
+- **Frontend Production Build**: Clean build in 243ms (`npm run build`)
+
+> [!CAUTION]
+> **Host Environment Execution Disclosure:** Docker is not installed on this host (`docker` command not recognized). Container configurations (`docker-compose.yml`, `backend/Dockerfile`, `frontend/Dockerfile`, `nginx.conf`) were statically validated, and deployed workflows were verified using FastAPI's ASGI client against production configurations. Actual container daemon execution must be performed on a Docker-enabled host prior to field demonstration.
+
+---
+
+## 26. Milestone 12: Actual Deployment Verification and Supervised Pilot Rehearsal
+
+Completes the controlled 11-step flood demonstration rehearsal, verifies deployed safety presentation invariants in the frontend, and finalizes the supervisor demonstration approval protocol.
+
+### 1. Controlled Demonstration Rehearsal (11 Steps Verified)
+Automated and verified in [`backend/test_deployment_verification_m12.py`](backend/test_deployment_verification_m12.py):
+1. **Application & Map Load**: `GET /flood-hazards` loads verified polygon boundaries and severity layers.
+2. **Alerts & Timestamps**: `GET /disaster-alerts` outputs official source advisories with ISO timestamps.
+3. **Multi-Tier Classification**: Distinguishes `AUTHORITATIVE`, `PUBLIC_UNVERIFIED`, `DEMO`, and `STALE` records.
+4. **Catalogue Facility Selection**: Retrieves Osmania General Hospital (`HYD-H-001`) with verified geographic coordinates.
+5. **Baseline Evacuation Route**: Generates shortest unconstrained route on Hyderabad OSM road network.
+6. **Hazard Avoidance Recalculation**: Reroutes around synthetic demonstration flooded road segments (`HAZARDS_AVOIDED`).
+7. **Severed Access Handling**: Returns `NO_SAFE_ROUTE` and empty geometry when all access links are submerged.
+8. **Provider Outage Resilience**: Handles simulated weather/alert provider failures with `DEGRADED` status while maintaining core application availability.
+9. **Hospital Truth-in-Data**: Operational status verified is `false` and capacity is `null` when live telemetry is unintegrated.
+10. **Coverage Safety Threshold**: Musi River basin queries strictly return `MODEL_UNSUPPORTED` (71.77 km from nearest gauge).
+11. **Administrative Access Control**: Rejects unauthorized dataset commits and verification promotions (`401`/`403`).
+
+### 2. Frontend Presentation Safety Hardening
+- **Never Claims 'Confirmed Clear'**: Replaced generic green "Road Conditions: CLEAR" badge with informative notice: `Evaluated Road Status: NO REPORTED HAZARDS (Unmonitored segments not guaranteed clear)`.
+- **Never Claims 'Safe Detour'**: Updated detour banner to `Alternate Detour Recalculated (Avoided Known Blockages)`.
+- **Never Presents Unverified Hospitals as Operational**: Explicitly labels unverified hospitals: `Unverified (UNKNOWN) — Operational status not confirmed`.
+
+### 3. Operations & Approval Protocol
+- **Supervisor Sign-Off Checklist**: Documented in [`docs/deployment_and_operations_guide.md`](docs/deployment_and_operations_guide.md) Section 11, requiring technical supervisor verification of isolation from emergency dispatch, non-production credentials, observer pre-briefings, and discrepancy logging sheets.
+- **Docker Deployment Instructions**: Complete multi-container instructions provided for staging hosts with Docker Desktop / Docker Engine.
+
+### 4. Final Cumulative Test Suite: 311/311 Passing
+- **Milestone 12 & 13 Suite**: 19 passed, 0 failed in 28.50s ([`backend/test_deployment_verification_m12.py`](backend/test_deployment_verification_m12.py))
+- **Total Backend Suite**: **311 passed**, 0 failed, 41 warnings in 158.59s (`python -m pytest -q`)
+- **Frontend Production Build**: Clean build in 248ms (`npm run build`)
+
+---
+
+## 27. Milestone 13 Final Project Submission Package
+
+### 1. Submission Deliverables
+- **Final Project Report**: [`docs/final_project_report.md`](docs/final_project_report.md) — 16-section academic report with complete Mermaid system architecture diagram.
+- **Five-Minute Demonstration Script**: [`docs/final_demo_script.md`](docs/final_demo_script.md) — Timed presentation protocol for evaluators.
+- **Submission & Verification Checklist**: [`docs/final_submission_checklist.md`](docs/final_submission_checklist.md) — Verified screenshot inventory, security audit, and test matrices.
+- **Deployment & Operations Guide**: [`docs/deployment_and_operations_guide.md`](docs/deployment_and_operations_guide.md) — Docker and production configuration manual.
+- **Screenshot Inventory**: [`docs/screenshots/`](docs/screenshots/) — 7 verified browser screenshots captured via Chrome CDP.
+
+### 2. Active Local URLs
+| Endpoint | Local URL | Description |
+|:---|:---|:---|
+| **Citizen & Operations UI** | `http://127.0.0.1:5173/` | Interactive Leaflet flood map, shelter routing, and admin dashboard |
+| **Backend REST API** | `http://127.0.0.1:8000/` | FastAPI asynchronous backend engine |
+| **System Health Check** | `http://127.0.0.1:8000/health` | Process health and external provider telemetry monitoring |
+| **Interactive API Docs** | `http://127.0.0.1:8000/docs` | Swagger UI documentation with interactive schema testing |
+
+### 3. Verified Server Startup Commands
+```powershell
+# 1. Start Backend API Server (from backend/ directory):
+cd backend
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+# 2. Start Frontend Development Server (from frontend/ directory in a separate terminal):
+cd frontend
+npm run dev -- --host 127.0.0.1 --port 5173
+```
+
+### 4. Final Acceptance & Operational Reality Notice
+1. **Flood-Only Scope**: SafeMap AI strictly evaluates flood inundation and refuses multi-disaster creep.
+2. **Model Coverage Safeguard**: Automated flood severity inference for Hyderabad remains **`MODEL_UNSUPPORTED` / `INSUFFICIENT_LOCAL_DATA`** because the nearest calibrated gauge is 71.71 km away (exceeding the 50.0 km policy limit).
+3. **Unmonitored Roads**: Roads without intersecting hazard polygons are designated `NO KNOWN HAZARD INTERSECTS THIS LOCATION`; unmonitored roads are **not guaranteed clear**.
+4. **Unverified Resource Capacity**: Hospital and shelter bed occupancies remain `null` and are labeled **`PUBLIC_UNVERIFIED`** unless officially confirmed by health authorities.
+5. **Academic Decision-Support Prototype**: Passing automated tests demonstrates structural and logical correctness, **not** operational field safety or civil protection readiness.
+6. **Docker Staging Status**: Multi-container Docker deployment (`docker-compose.yml`) is statically verified and documented; actual container launch requires a staging host with Docker Engine installed.
+
+---
+
+## 28. Future Work
+
+- **TSDPS AWS Telemetry Integration**: Negotiate institutional data-sharing agreements for continuous 15-minute raw telemetry across GHMC.
+- **Musi River Gauge Digitization**: Digitize continuous river-stage telemetry from Telangana Irrigation & CAD Department at Osman Sagar, Himayat Sagar, and Musi bridges.
+- **ISRO SAR Flood Rasters**: Ingest Level-3 calibrated SAR GeoTIFF flood-inundation masks from NRSC Bhuvan for cloud-penetrating water detection.
+- **High-Resolution Urban DEM**: Incorporate $\le 5$ m digital elevation models and digitized stormwater drainage (nala) network topography.
+
+
+

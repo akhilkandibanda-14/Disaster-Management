@@ -1,0 +1,37 @@
+{
+  "dataset_id": "BHUVAN-NRSC-HYD-OCT2020",
+  "title": "ISRO / NRSC Bhuvan Flood Inundation Assessment: Hyderabad October 2020 Event",
+  "publisher": "National Remote Sensing Centre (NRSC), Indian Space Research Organisation (ISRO)",
+  "portal_url": "https://bhuvan-app1.nrsc.gov.in/disaster/disaster.php",
+  "documentation_url": "https://www.nrsc.gov.in",
+  "disaster_type": "URBAN_FLASH_FLOOD",
+  "meteorological_trigger": "Deep Depression BOB 02 (Bay of Bengal)",
+  "event_period": {
+    "rainfall_start": "2020-10-13T00:00:00+05:30",
+    "rainfall_peak": "2020-10-14T06:00:00+05:30",
+    "satellite_observation_date": "2020-10-18T10:30:00+05:30"
+  },
+  "spatial_coverage": {
+    "geographic_region": "Greater Hyderabad Municipal Corporation (GHMC) and Musi River floodplain",
+    "bounding_box_wgs84": [78.30, 17.25, 78.65, 17.55],
+    "mapped_submergence_pockets": [
+      "Ramanthapur (Pedda Cheruvu overflow)",
+      "Saroornagar Cheruvu & Chintalkunta corridor",
+      "Meerpet Cheruvu / Almasguda nala basin",
+      "Jeedimetla Cheruvu / Fox Sagar drainage",
+      "Balapur / Al Jubail Colony / Hafiz Baba Nagar",
+      "Musi River Central Causeway Corridor (Chaderghat to Moosarambagh)",
+      "Falaknuma / Bandlaguda low-lying settlements"
+    ]
+  },
+  "remote_sensing_platform": {
+    "sensor_types": ["Optical Cartosat", "Sentinel-1 Synthetic Aperture Radar (SAR)"],
+    "resolution_m": 10.0,
+    "elevation_model": "CARTOSAT-1 DEM (10m grid)"
+  },
+  "format_available": "WMS / WFS Web Map Service layers & PDF Disaster Damage Assessment Reports",
+  "access_status": "MAP_VIEWER_AND_REPORT_ONLY",
+  "access_restrictions": "Disaster management support geoportal layer. Raw full-resolution GeoTIFF inundation rasters require authorized ISRO/NRSC nodal credentials and formal NDMA/State Government requisition.",
+  "data_classification": "HISTORICAL_INUNDATION",
+  "curation_notes": "Satellite flood extent represents open-water ponding visible on 18 Oct 2020. Clouds, heavy tree canopy, and dense urban building shadows can cause false negatives (sub-canopy or street-level under-bridge flooding undetected)."
+}

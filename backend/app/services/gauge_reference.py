@@ -96,6 +96,9 @@ class GaugeReferenceService:
         min_dist = distances.loc[min_idx]
         nearest_gauge_row = self.merged_df.loc[min_idx]
         
+        # Calculate how many gauges lie within model coverage geographic radius (50 km) from actual dataset
+        gauges_within_limit = int((distances <= max_dist_km).sum())
+        
         gauge_id = str(nearest_gauge_row['GaugeID'])
         gauge_lat = float(nearest_gauge_row['Latitude'])
         gauge_lon = float(nearest_gauge_row['Longitude'])
@@ -109,6 +112,8 @@ class GaugeReferenceService:
                 distance_km=min_dist,
                 max_allowed_distance_km=max_dist_km,
                 within_model_coverage=False,
+                gauges_within_50km_count=gauges_within_limit,
+                catchment_gauges_count=gauges_within_limit,
                 message="Location is outside the geographic coverage of the current INDOFLOODS gauge model."
             )
             
@@ -121,8 +126,34 @@ class GaugeReferenceService:
             distance_km=min_dist,
             max_allowed_distance_km=max_dist_km,
             within_model_coverage=True,
+            gauges_within_50km_count=gauges_within_limit,
+            catchment_gauges_count=gauges_within_limit,
             gauge_features=features
         )
+
+    def count_gauges_within_radius(self, latitude: float, longitude: float, radius_km: float = 50.0) -> int:
+        """
+        Dynamically calculates the number of calibrated INDOFLOODS gauges within a
+        geographic radial distance (default 50.0 km).
+        
+        Scientific Note: This is a radial Euclidean/Haversine distance calculation
+        across coordinates and does not validate topological watershed / river basin
+        boundaries. For true hydrological catchment membership, river basin delineation
+        (e.g., Godavari vs. Krishna / Musi basin) must be evaluated separately.
+        """
+        if self.merged_df is None or self.merged_df.empty:
+            return 0
+        if 'Latitude' not in self.merged_df.columns or 'Longitude' not in self.merged_df.columns:
+            return 0
+        distances = self.merged_df.apply(
+            lambda row: self._haversine(latitude, longitude, row['Latitude'], row['Longitude']), 
+            axis=1
+        )
+        return int((distances <= radius_km).sum())
+
+    def count_gauges_in_catchment(self, latitude: float, longitude: float, radius_km: float = 50.0) -> int:
+        """Legacy alias for count_gauges_within_radius."""
+        return self.count_gauges_within_radius(latitude, longitude, radius_km=radius_km)
 
     def get_all_gauges(self):
         if self.merged_df is None or self.merged_df.empty:

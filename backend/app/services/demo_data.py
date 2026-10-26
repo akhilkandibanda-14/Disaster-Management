@@ -15,8 +15,8 @@ def demo_shelters() -> list[ShelterResponse]:
 def demo_roads() -> list[RoadConditionResponse]:
     timestamp = datetime.now(timezone.utc)
     return [
-        RoadConditionResponse(id=1, road_name="Musi Riverside Road", status="FLOODED", latitude=17.385, longitude=78.486, notes="Avoid during current flood simulation.", last_updated=timestamp),
-        RoadConditionResponse(id=2, road_name="Central Relief Corridor", status="OPEN", latitude=17.397, longitude=78.478, notes="Preferred response corridor.", last_updated=timestamp),
+        RoadConditionResponse(id=1, road_name="Musi Riverside Road", status="FLOODED", latitude=17.385, longitude=78.486, notes="[DEMO] Avoid during current flood simulation.", last_updated=timestamp),
+        RoadConditionResponse(id=2, road_name="Central Relief Corridor", status="OPEN", latitude=17.397, longitude=78.478, notes="[DEMO] Preferred response corridor.", last_updated=timestamp),
     ]
 
 

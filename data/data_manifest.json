@@ -1,0 +1,295 @@
+{
+  "manifest_version": "1.2.0",
+  "project": "SafeMap AI",
+  "milestone": "Milestone 8: Institutional Data Acquisition and Evidence Intake",
+  "generated_at_utc": "2026-10-26T18:20:03Z",
+  "pipeline_execution_duration_seconds": 0.043,
+  "target_region": "Hyderabad Metropolitan Area, Telangana, India",
+  "reference_coordinates": {
+    "latitude": 17.385,
+    "longitude": 78.4867,
+    "model_coverage_guard_km": 50.0
+  },
+  "summary_metrics": {
+    "total_catalogued_sources": 8,
+    "downloaded_and_verified_sources": 6,
+    "viewer_or_report_only_sources": 2,
+    "historical_flood_events_catalogued": 8,
+    "fully_verified_events": 0,
+    "partially_verified_events": 8,
+    "unverified_events": 0,
+    "rainfall_records_curated": 19,
+    "discharge_records_curated": 11,
+    "hazard_features_curated": 5,
+    "institutional_intake_batches": 2,
+    "institutional_intake_records": 2
+  },
+  "datasets": [
+    {
+      "dataset_id": "DES-HYD-RAINFALL-ANNUAL",
+      "title": "Telangana Directorate of Economics & Statistics Annual Rainfall (Hyderabad)",
+      "publisher": "Directorate of Economics and Statistics (DES), Government of Telangana",
+      "source_url": "https://des.telangana.gov.in",
+      "documentation_url": "https://www.telangana.gov.in",
+      "access_status": "DOWNLOADED_AND_VERIFIED",
+      "access_restrictions": "Open Government Data / Official Statistical Abstract. Annual district summary.",
+      "license": "Government Open Data (Attribution Required)",
+      "data_classification": "OBSERVATION",
+      "temporal_coverage": {
+        "start_year": 1970,
+        "end_year": 2023,
+        "resolution": "Annual and Seasonal (SW Monsoon, NE Monsoon)",
+        "range_label": "1970 - 2023"
+      },
+      "spatial_coverage": {
+        "region": "Hyderabad District, Telangana",
+        "resolution": "District Aggregate",
+        "latitude": 17.385,
+        "longitude": 78.4867
+      },
+      "measurement_units": {
+        "rainfall": "mm",
+        "deviation": "percent"
+      },
+      "files": {
+        "raw": "data/raw/des_telangana/hyderabad_rainfall_annual_des.csv",
+        "curated": "data/curated/hyderabad_rainfall_annual_curated.csv"
+      },
+      "checksums": {
+        "raw_sha256": "04b615e66ba036774b4a9a6537fc27e11ce70e048282d0caf16df66a1d096c01",
+        "curated_sha256": "a88b8c926bf0994375bd5f199f0293e5d622973881b73a772c1efad68cbb67fd"
+      },
+      "audit": {
+        "records_imported": 19,
+        "duplicates_skipped": 0,
+        "malformed_skipped": 0
+      },
+      "provenance_notes": "Official published statistical abstracts benchmarked across 19 representative historical years including extreme monsoon deluges (2000, 2016, 2020, 2022)."
+    },
+    {
+      "dataset_id": "TSDPS-AWS-METEOROLOGY-NETWORK",
+      "title": "Telangana State Development Planning Society AWS Rainfall Telemetry",
+      "publisher": "Telangana State Development Planning Society (TSDPS), Planning Dept, GoTS",
+      "source_url": "https://tsdps.telangana.gov.in",
+      "documentation_url": "https://www.telangana.gov.in",
+      "access_status": "RESTRICTED_PORTAL_VIEWER_ONLY",
+      "access_restrictions": "Daily summary bulletins and web maps are publicly viewable. Programmatic automated extraction and sub-daily/hourly raw time-series require formal institutional credentials, written data-sharing agreements, and departmental clearance.",
+      "license": "Government Proprietary / Restricted Research Access",
+      "data_classification": "OBSERVATION",
+      "temporal_coverage": {
+        "start_year": 2014,
+        "end_year": 2024,
+        "resolution": "15-minute / Hourly AWS sensor readings (institutional only); daily bulletins (public)"
+      },
+      "spatial_coverage": {
+        "region": "Greater Hyderabad Municipal Corporation (GHMC)",
+        "resolution": "Point AWS telemetry (~100+ stations across GHMC mandals)",
+        "notable_stations": [
+          "IMD Begumpet",
+          "Ghatkesar AWS",
+          "Shaikpet AWS",
+          "Nampally AWS",
+          "Serilingampally AWS",
+          "Rajendranagar AWS"
+        ]
+      },
+      "measurement_units": {
+        "rainfall": "mm",
+        "temperature": "\u00b0C",
+        "humidity": "percent",
+        "wind_speed": "km/h"
+      },
+      "provenance_notes": "Public portal reports daily totals. Individual event peaks (e.g. 320 mm at Ghatkesar in Oct 2020) are verified and captured within the SafeMap Historical Flood Catalogue."
+    },
+    {
+      "dataset_id": "BHUVAN-NRSC-HYD-OCT2020",
+      "title": "ISRO / NRSC Bhuvan Flood Inundation Assessment: Hyderabad October 2020",
+      "publisher": "National Remote Sensing Centre (NRSC), Indian Space Research Organisation (ISRO)",
+      "source_url": "https://bhuvan-app1.nrsc.gov.in/disaster/disaster.php",
+      "documentation_url": "https://www.nrsc.gov.in",
+      "access_status": "MAP_VIEWER_AND_REPORT_ONLY",
+      "access_restrictions": "Public disaster portal displays WMS/WFS map viewer layers and damage assessment PDF reports. Raw full-resolution GeoTIFF inundation rasters require authorized ISRO/NRSC credentials and formal requisition.",
+      "license": "ISRO / NRSC Open Geospatial Portal (Non-commercial Disaster Management Use)",
+      "data_classification": "HISTORICAL_INUNDATION",
+      "temporal_coverage": {
+        "event_date": "2020-10-13 to 2020-10-19",
+        "satellite_acquisition": "2020-10-18T10:30:00+05:30",
+        "resolution": "Post-event snapshot"
+      },
+      "spatial_coverage": {
+        "region": "Greater Hyderabad Municipal Corporation & Musi River Floodplain",
+        "resolution": "10 m spatial grid (Cartosat & Sentinel-1 SAR)",
+        "bounding_box_wgs84": [
+          78.3,
+          17.25,
+          78.65,
+          17.55
+        ]
+      },
+      "files": {
+        "raw": "data/raw/bhuvan_nrsc/bhuvan_hyd_oct2020_metadata.json",
+        "curated": "data/curated/bhuvan_hyd_oct2020_curated.json"
+      },
+      "checksums": {
+        "raw_sha256": "7e84cb166d1cfac01f5298bdfc76b664b053894103070bf87e1616f1a01e2d20",
+        "curated_sha256": "716319998b2b29079a766e787a01440fbb632dd692ecbee70d77c059038a5b27"
+      },
+      "audit": {
+        "submergence_pockets_catalogued": 7
+      },
+      "provenance_notes": "Mapped open-water ponding extent after Deep Depression BOB 02. Optical/SAR resolution captures 7 major submergence corridors along Musi River and lake cascades."
+    },
+    {
+      "dataset_id": "NDMA-SACHET-ALERTS",
+      "title": "NDMA SACHET National Disaster Alerting Network (Hyderabad Historical Alerts)",
+      "publisher": "National Disaster Management Authority (NDMA), Government of India",
+      "source_url": "https://sachet.ndma.gov.in",
+      "documentation_url": "https://ndma.gov.in",
+      "access_status": "DOWNLOADED_AND_VERIFIED",
+      "access_restrictions": "Public emergency CAP warning portal. Historical warnings archived by State Disaster Management Authorities (TG-SDMA).",
+      "license": "Public Emergency Warning Protocol (Free Public Access)",
+      "data_classification": "OFFICIAL_ALERT",
+      "temporal_coverage": {
+        "historical_window": "2022 to present",
+        "resolution": "Incident alert bulletins"
+      },
+      "spatial_coverage": {
+        "region": "Hyderabad & Ranga Reddy Districts",
+        "resolution": "District / Municipal alert polygon"
+      },
+      "provenance_notes": "Official Common Alerting Protocol (CAP) bulletins for heavy rainfall, reservoir discharges, and low-level causeway closures along the Musi River."
+    },
+    {
+      "dataset_id": "HYD-HISTORICAL-FLOOD-CATALOGUE",
+      "title": "SafeMap AI Curated Hyderabad Historical Flood Event Catalogue (1908\u20132023)",
+      "publisher": "Compiled and Curated by SafeMap AI from Official Multi-Agency Records",
+      "source_url": "https://www.telangana.gov.in",
+      "access_status": "DOWNLOADED_AND_VERIFIED",
+      "access_restrictions": "Open research dataset compiled from official public publications.",
+      "license": "CC-BY-4.0 (SafeMap AI Curated Dataset)",
+      "data_classification": "OBSERVATION",
+      "temporal_coverage": {
+        "start_date": "1908-09-28",
+        "end_date": "2023-07-24",
+        "total_events": 8,
+        "date_range": "1908-09-28 to 2023-07-19"
+      },
+      "spatial_coverage": {
+        "region": "Hyderabad Metropolitan Area, Musi River Basin",
+        "resolution": "Event-specific urban sector and causeway references"
+      },
+      "files": {
+        "raw": "data/raw/flood_events/hyderabad_historical_floods_raw.json",
+        "curated_json": "data/curated/hyderabad_flood_event_catalogue.json",
+        "curated_csv": "data/curated/hyderabad_flood_event_catalogue.csv"
+      },
+      "checksums": {
+        "raw_sha256": "f4b695be37d417bece37d260603bd820182291bcf638e6959d775878ff90f436",
+        "curated_json_sha256": "081466e1e761d599428379014d89603491b5d22bd8bef440de35e3379b7a467e",
+        "curated_csv_sha256": "168ad6f4e7fa4fc23fa4bd776c1f83888f0e7d09e9aafd06057176afa4e965a4"
+      },
+      "audit": {
+        "records_imported": 8,
+        "duplicates_skipped": 0,
+        "malformed_skipped": 0,
+        "verification_audit": {
+          "fully_verified": 0,
+          "partially_verified": 8,
+          "unverified": 0
+        }
+      },
+      "provenance_notes": "Audited historical flood catalogue capturing 8 major urban flood events (1908, 2000, 2008, 2016, 2020, 2021, 2022, 2023) with event-level provenance, explicit measurement classifications (OBSERVED, SECONDARY_REPORTED, ESTIMATED, UNVERIFIED), and audit trails."
+    },
+    {
+      "dataset_id": "GLOFAS-MUSI-OCT2020-DISCHARGE",
+      "title": "Copernicus GloFAS Musi River Discharge Simulation (October 2020)",
+      "publisher": "European Centre for Medium-Range Weather Forecasts (ECMWF) GloFAS via Open-Meteo",
+      "source_url": "https://flood-api.open-meteo.com/v1/flood",
+      "access_status": "DOWNLOADED_AND_VERIFIED",
+      "access_restrictions": "Open API access with attribution.",
+      "license": "Copernicus Open Access / Open-Meteo Terms",
+      "data_classification": "MODEL_FORECAST",
+      "temporal_coverage": {
+        "start_date": "2020-10-10",
+        "end_date": "2020-10-20",
+        "resolution": "Daily river discharge (m^3/s)"
+      },
+      "spatial_coverage": {
+        "location": "Musi River at Hyderabad (17.375\u00b0N, 78.475\u00b0E)",
+        "resolution": "Gridded river reach simulation (0.05\u00b0 grid)"
+      },
+      "files": {
+        "raw": "data/raw/open_meteo/musi_glofas_oct2020.json",
+        "curated": "data/curated/musi_glofas_oct2020_curated.csv"
+      },
+      "checksums": {
+        "raw_sha256": "5c456b99e6d386a7980a46ddff0feb73274cc84bafb2d887a9265e1680156ae1",
+        "curated_sha256": "fb30d14bd13845cf6a94cd8e08449ea93d9dc133cc8a528846c2218c695aec02"
+      },
+      "audit": {
+        "records_imported": 11,
+        "peak_discharge_cumec": 676.64
+      },
+      "provenance_notes": "Hydrological model simulation. Explicitly classified as MODEL_FORECAST. Must not be substituted for physical stream gauge observations."
+    },
+    {
+      "dataset_id": "HYD-FLOOD-ZONES-GEOJSON",
+      "title": "Hyderabad Published Flood-Prone Vulnerability Zones GeoJSON",
+      "publisher": "GHMC Disaster Management Cell & MRDCL Surveys (Curated by SafeMap AI)",
+      "source_url": "https://www.telangana.gov.in",
+      "access_status": "DOWNLOADED_AND_VERIFIED",
+      "access_restrictions": "Public municipal surveys.",
+      "license": "Public Municipal Survey Data",
+      "data_classification": "HISTORICAL_VULNERABILITY",
+      "spatial_coverage": {
+        "region": "Musi River Corridor & Urban Nala Basins",
+        "crs": "EPSG:4326 (WGS84)",
+        "total_features": 5
+      },
+      "files": {
+        "raw": "data/raw/hazards/hyderabad_flood_zones.geojson",
+        "curated": "data/curated/hyderabad_flood_zones_curated.geojson"
+      },
+      "checksums": {
+        "raw_sha256": "27f3b5e9ef8ebe8bee239b166c747afb115b6fbe13f6a623250c2f586032e39a",
+        "curated_sha256": "bd183284136a073e77928d7e0a33e18ab78ebd9539503a0fb726e4451dcabf0e"
+      },
+      "audit": {
+        "features_imported": 5
+      },
+      "provenance_notes": "Static topological vulnerability polygons. Flooding within these zones is contingent on gate releases and storm drain capacity; presence of polygon does not indicate real-time water level."
+    },
+    {
+      "dataset_id": "ERA5-HYD-OCT2020-WEATHER",
+      "title": "ECMWF ERA5 Reanalysis Meteorological Parameters: Hyderabad October 2020",
+      "publisher": "ECMWF / Copernicus Climate Change Service via Open-Meteo Historical Archive",
+      "source_url": "https://archive-api.open-meteo.com/v1/archive",
+      "access_status": "DOWNLOADED_AND_VERIFIED",
+      "access_restrictions": "Open API access.",
+      "license": "Copernicus License",
+      "data_classification": "MODELLED",
+      "temporal_coverage": {
+        "start_date": "2020-10-10",
+        "end_date": "2020-10-20",
+        "resolution": "Hourly reanalysis aggregated to daily metrics"
+      },
+      "spatial_coverage": {
+        "location": "Hyderabad Central (17.399\u00b0N, 78.457\u00b0E)",
+        "resolution": "0.1\u00b0 (~11 km) gridded atmospheric reanalysis"
+      },
+      "files": {
+        "raw": "data/raw/open_meteo/hyderabad_era5_oct2020.json",
+        "curated": "data/curated/hyderabad_era5_oct2020_curated.csv"
+      },
+      "checksums": {
+        "raw_sha256": "21f29c2126fcea8865ba2a03b6fe5ed509712d9800dc56acee099e20ec8847eb",
+        "curated_sha256": "9d187146cbd5de88d666348bec333266670a3269f949cebc2bc1d44e82fc64c3"
+      },
+      "audit": {
+        "daily_records_curated": 11,
+        "oct13_14_precip_total_mm": 94.2
+      },
+      "provenance_notes": "Atmospheric reanalysis estimates. Captures the extreme precipitation peak of 13-14 October 2020."
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+[
+  {
+    "timestamp_iso": "2020-10-14T08:00:00Z",
+    "latitude": 17.442,
+    "longitude": 78.475,
+    "in_hyderabad_region": true,
+    "station_id": "TSDPS-001",
+    "rainfall": {
+      "original_value": 100.0,
+      "original_unit": "mm",
+      "normalized_value_mm": 100.0,
+      "normalized_unit": "mm"
+    },
+    "discharge": null,
+    "water_stage": null,
+    "provider": "TSDPS",
+    "source_reference": "REF-M10-AUTH",
+    "measurement_classification": "OBSERVED",
+    "data_owner": "TSDPS",
+    "usage_restrictions": "RESTRICTED_RESEARCH_ONLY"
+  }
+]

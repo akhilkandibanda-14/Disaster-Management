@@ -12,8 +12,11 @@ class WeatherResponse(BaseModel):
     wind_speed: float = Field(ge=0)
     weather_condition: str
     weather_description: str
+    condition: str | None = None
     pressure: float | None = None
     source: str
     timestamp: datetime
+    observation_time: datetime | None = None
+    is_stale: bool = False
     forecast_available: bool = False
     warning: str | None = None

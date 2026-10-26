@@ -1,0 +1,2 @@
+timestamp,station_id,latitude,longitude,rainfall,rainfall_unit
+2020-10-14T08:00:00Z,TSDPS-002,17.442,78.475,50.0,mm
