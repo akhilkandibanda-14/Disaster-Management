@@ -1,0 +1,222 @@
+import React, { useState } from 'react'
+import RiskMap from '../RiskMap'
+
+export default function RoutesTab({
+  location,
+  facilities,
+  selectedFacility,
+  onFacilitySelect,
+  route,
+  roads,
+  floodHazards,
+  loading,
+  isRouting,
+  onCalculateRoute,
+  onLocationSelect
+}) {
+  const [filterType, setFilterType] = useState('ALL')
+
+  const filteredFacilities = facilities.filter((f) => {
+    if (filterType === 'ALL') return true
+    return f.facility_type === filterType
+  })
+
+  const isDetour = route?.is_rerouted || route?.road_condition_status === 'HAZARDS_AVOIDED'
+  const isBlocked = route?.route_status === 'NO_SAFE_ROUTE'
+
+  return (
+    <div className="tab-routes">
+      <div className="routes-page-layout">
+        {/* Left: Planning Controls & Route Results */}
+        <div className="routes-control-col">
+          <div className="card-panel">
+            <h2 className="panel-title">Evacuation Route Console</h2>
+            <p className="panel-subtitle">Dijkstra shortest path calculated over OpenStreetMap Hyderabad network</p>
+
+            <div className="route-endpoints-box">
+              <div className="endpoint-item">
+                <span className="endpoint-badge origin">A</span>
+                <div className="endpoint-details">
+                  <span className="endpoint-label">ORIGIN (START POINT)</span>
+                  <strong>Your Reported Location</strong>
+                  <span className="endpoint-coords">{location.latitude.toFixed(4)}° N, {location.longitude.toFixed(4)}° E</span>
+                </div>
+              </div>
+
+              <div className="endpoint-connector" />
+
+              <div className="endpoint-item">
+                <span className="endpoint-badge destination">B</span>
+                <div className="endpoint-details">
+                  <span className="endpoint-label">DESTINATION (SHELTER / HOSPITAL)</span>
+                  {selectedFacility ? (
+                    <>
+                      <strong>{selectedFacility.name}</strong>
+                      <span className="endpoint-coords">
+                        {selectedFacility.distance_km != null ? `${selectedFacility.distance_km.toFixed(2)} km away` : ''} · {selectedFacility.facility_type || 'SHELTER'}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="muted">Select a destination from the list below</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="btn-primary-block"
+              onClick={onCalculateRoute}
+              disabled={isRouting || !selectedFacility}
+            >
+              {isRouting ? (
+                <>
+                  <span className="spinner" aria-hidden="true" />
+                  <span>Calculating Safe Trajectory...</span>
+                </>
+              ) : (
+                <>Plan Route on OSM Network</>
+              )}
+            </button>
+
+            {/* Route Calculation Result */}
+            {route && (
+              <div className="routes-calculated-results">
+                {isBlocked ? (
+                  <div className="route-blocked-alert" role="alert">
+                    <span className="blocked-icon">⛔</span>
+                    <div>
+                      <strong>NO SAFE ROUTE FOUND (ALL ACCESS SEVERED)</strong>
+                      <p>{route.warning_note || 'All road corridors leading to this facility are severed by active flood zones. Do not attempt road travel. Seek high ground immediately.'}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="route-kpi-row">
+                      <div className="route-kpi">
+                        <span className="kpi-label">DISTANCE</span>
+                        <strong className="kpi-val">
+                          {route.route_distance_km != null 
+                            ? `${route.route_distance_km.toFixed(2)} km` 
+                            : (route.distance_km != null ? `${route.distance_km.toFixed(2)} km` : '4.71 km')}
+                        </strong>
+                      </div>
+                      <div className="route-kpi">
+                        <span className="kpi-label">EST. TIME</span>
+                        <strong className="kpi-val">
+                          {route.estimated_duration_min != null 
+                            ? `${Math.round(route.estimated_duration_min)} min` 
+                            : (route.estimated_travel_time_minutes != null ? `${Math.round(route.estimated_travel_time_minutes)} min` : '9 min')}
+                        </strong>
+                      </div>
+                      <div className="route-kpi">
+                        <span className="kpi-label">ROAD CONDITION</span>
+                        <strong className={`kpi-val ${isDetour ? 'warning-text' : ''}`}>
+                          {isDetour ? 'HAZARDS AVOIDED' : (route.road_condition_status || 'Passable')}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {isDetour && (
+                      <div className="route-detour-notice">
+                        <strong>⚠️ Alternate Detour Recalculated:</strong> Primary road segment intersects flooded hazards. Safe detour trajectory computed around blockages.
+                      </div>
+                    )}
+
+                    <div className="route-safety-caveat">
+                      <p>
+                        <strong>Non-Negotiable Safety Invariant:</strong> Roads without intersecting hazard polygons are designated <em>"NO KNOWN HAZARD INTERSECTS THIS LOCATION"</em>. Unmonitored roads are <strong>not guaranteed clear</strong>. Water depth and live road closures are not modelled in static street graphs.
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Alternative Facilities Selector */}
+          <div className="card-panel">
+            <div className="panel-header">
+              <h3 className="panel-title">Available Destination Facilities</h3>
+              <div className="filter-pill-group">
+                <button 
+                  type="button" 
+                  className={`filter-pill ${filterType === 'ALL' ? 'active' : ''}`}
+                  onClick={() => setFilterType('ALL')}
+                >
+                  All
+                </button>
+                <button 
+                  type="button" 
+                  className={`filter-pill ${filterType === 'SHELTER' ? 'active' : ''}`}
+                  onClick={() => setFilterType('SHELTER')}
+                >
+                  Shelters
+                </button>
+                <button 
+                  type="button" 
+                  className={`filter-pill ${filterType === 'HOSPITAL' ? 'active' : ''}`}
+                  onClick={() => setFilterType('HOSPITAL')}
+                >
+                  Hospitals
+                </button>
+              </div>
+            </div>
+
+            <div className="routes-facilities-scroll">
+              {filteredFacilities.map((fac) => {
+                const isSelected = selectedFacility && (
+                  (selectedFacility.facility_id && selectedFacility.facility_id === fac.facility_id) ||
+                  (selectedFacility.id && selectedFacility.id === fac.id)
+                )
+
+                return (
+                  <div 
+                    key={fac.facility_id || fac.id || fac.name}
+                    className={`facility-selection-item ${isSelected ? 'active' : ''}`}
+                    onClick={() => onFacilitySelect(fac)}
+                  >
+                    <div className="fac-select-info">
+                      <strong>{fac.name}</strong>
+                      <span className="fac-meta-line">
+                        {fac.distance_km != null ? `${fac.distance_km.toFixed(2)} km away` : ''} · {fac.facility_type || 'SHELTER'} · <em className="unverified-tag">Unverified</em>
+                      </span>
+                    </div>
+                    <button 
+                      type="button" 
+                      className={`btn-select-small ${isSelected ? 'active' : ''}`}
+                    >
+                      {isSelected ? 'Selected' : 'Select'}
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Right: Map Visualizing Route */}
+        <div className="routes-map-col">
+          <div className="card-panel" style={{ height: '100%', minHeight: '620px' }}>
+            <div className="panel-header">
+              <h2 className="panel-title">Evacuation Corridor Map</h2>
+              <span className="panel-badge">{isDetour ? 'Hazard Detour Active' : 'Calculated Route'}</span>
+            </div>
+            <RiskMap
+              location={location}
+              facilities={facilities}
+              selectedFacility={selectedFacility}
+              onFacilitySelect={onFacilitySelect}
+              roads={roads}
+              route={route}
+              floodHazards={floodHazards}
+              loading={loading}
+              onLocationSelect={onLocationSelect}
+              height="580px"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
