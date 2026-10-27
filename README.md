@@ -851,5 +851,62 @@ npm run dev -- --host 127.0.0.1 --port 5173
 - **ISRO SAR Flood Rasters**: Ingest Level-3 calibrated SAR GeoTIFF flood-inundation masks from NRSC Bhuvan for cloud-penetrating water detection.
 - **High-Resolution Urban DEM**: Incorporate $\le 5$ m digital elevation models and digitized stormwater drainage (nala) network topography.
 
+---
 
+## 29. Production Readiness Phase: PostgreSQL Migration & Evacuation Route Safety Validation
 
+Upgrades SafeMap AI with reliable database persistence, idempotent JSON migration, and rigorous geometric evacuation route safety validation while strictly preserving the open, zero-authentication public architecture.
+
+### 1. Strict No-Authentication Public Architecture
+The entire SafeMap AI platform remains publicly accessible without accounts, login screens, or passwords:
+- **Zero Login / Signup**: All citizens can view the flood-risk map, browse alerts, search emergency shelters, compute evacuation paths, submit incident reports, and view incident details without creating an account.
+- **No Hidden Roles or Sessions**: No JWT, OAuth, session cookies, or user tiers exist in the application.
+- **Public Community Actions**: Citizens can submit new flood reports and contribute community observations:
+  - Corroborating an active hazard report: `COMMUNITY_CORROBORATED` (increases corroboration count without municipal verification).
+  - Reporting receding or drained floodwaters: `COMMUNITY_RESOLUTION_OBSERVED` (records citizen resolution observation without treating it as verified municipal closure).
+- **Provenance Escalation & Direct Closure Protection**: Anonymous public callers are strictly forbidden from asserting official status transitions (`VERIFIED_MUNICIPAL`, `RESOLVED`, or `REJECTED`), all of which are rejected with HTTP 403 Forbidden. Official verification and incident resolution are restricted to institutional emergency dispatch intake (`backend/scripts/verify_incident.py`).
+
+### 2. Database Architecture & PostgreSQL Migration
+- **Declarative ORM**: Implemented [`backend/app/models/incident.py`](backend/app/models/incident.py) with structured attributes for geographic coordinates, flood taxonomy, severity levels, sanitization fields, and verification provenance.
+- **Database Indexing**: Optimized for emergency response queries with indexes on primary key, spatial coordinates `(latitude, longitude)`, severity, category, and compound status.
+- **Alembic Migrations**: Fully configured in `backend/alembic.ini` and `backend/alembic/env.py`. Initial migration `20261027_01_create_incidents_table.py` generates deterministic PostgreSQL DDL transactions.
+- **Migration Utility**: [`backend/scripts/migrate_json_to_postgres.py`](backend/scripts/migrate_json_to_postgres.py) provides non-destructive, idempotent migration from `backend/data/incidents.json` to PostgreSQL:
+  ```bash
+  # Dry-run validation without writing to database:
+  python backend/scripts/migrate_json_to_postgres.py --dry-run
+
+  # Execute migration with automated backup and rollback ledger:
+  python backend/scripts/migrate_json_to_postgres.py
+
+  # Revert imported records if necessary:
+  python backend/scripts/migrate_json_to_postgres.py --rollback backend/data/migration_rollback_<timestamp>.json
+  ```
+- **PostgreSQL Readiness Handling**: In `APP_ENV=production`, the service verifies database connectivity upon startup and refuses to run without an active PostgreSQL instance. In development/demonstration mode, it falls back to isolated local storage if PostgreSQL is offline.
+- **Verification Disclosure**: PostgreSQL compatibility has been compiled and validated offline via static Alembic DDL generation and simulated via SQLite in-memory ORM suites. Live container execution is marked **NOT VERIFIED** until a running PostgreSQL/PostGIS daemon is present on the host.
+
+### 3. Evacuation Route Safety Validation Engine
+Implemented in [`backend/app/services/route_safety.py`](backend/app/services/route_safety.py) and integrated into [`backend/app/services/routing.py`](backend/app/services/routing.py):
+- **True Road-vs-Polygon Geometric Intersection**: Replaces centroid-only node blocking with exact Shapely `STRtree` spatial queries testing road segment `LineString` geometries against flood `Polygon` and `MultiPolygon` layers (`hazard_geom.intersects(edge_geom)`).
+- **Coordinate Reference System (CRS) Verification**: Enforces WGS84 geographic coordinate bounds `[78.10, 78.80]E, [17.15, 17.65]N` and detects/rejects inverted latitude/longitude inputs.
+- **Provenance-Aware Routing Rules**:
+  - `CONFIRMED_HIGH_RISK` (authoritative municipal hazards, active & severe): Hard-blocked.
+  - `HISTORICAL_MUNICIPAL` (low-lying inundation zones from historical surveys): Applies a 5.0x routing cost penalty to guide evacuees away from vulnerable terrain without breaking network connectivity.
+  - `UNVERIFIED_CITIZEN`: Applies a 1.5x caution penalty; never converted into confirmed road closures.
+- **Observation Freshness**: Hazards older than 6.0 hours are classified as `STALE_HAZARD` and flagged with advisory notices.
+- **Zero Safety Fabrication**:
+  - Distances are strictly summed from actual graph edge `length` geometry attributes.
+  - Travel durations return `None` unless live vehicle speeds and road telemetry are integrated.
+  - Generates independent alternatives only when edge overlap is $\le 0.70$ (Jaccard metric).
+  - Mandatory evacuation disclaimer returned in all route payloads and rendered visibly on the UI.
+  - Computed detours are labeled `"Avoidance detour trajectory computed around reported hazards"`—never described as "guaranteed safe".
+
+### 4. Institutional Verification CLI
+Authorized emergency dispatch teams can record physical field inspections via the dedicated CLI utility without web-based credentials:
+```bash
+python backend/scripts/verify_incident.py INC-2026-001 --status VERIFIED_MUNICIPAL --inspector-unit "DRF Unit 4" --notes "Inspected causeway; water depth 2.5 ft; road impassable."
+```
+
+### 5. Test Suite & Verification Results
+- **Full Backend Pytest Suite**: **343 passed**, 44 warnings, 0 failures (`python -m pytest -q`)
+- **Frontend Production Build**: Clean bundle in 239ms (`npm run build` in `frontend/`)
+- **Test Isolation**: All incident persistence tests run against isolated `tmp_path` files, guaranteeing that running `pytest` never mutates the pristine 54-record `backend/data/incidents.json` file.

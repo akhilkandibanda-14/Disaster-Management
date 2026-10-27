@@ -120,7 +120,7 @@ export default function RoutesTab({
 
                     {isDetour && (
                       <div className="route-detour-notice">
-                        <strong>⚠️ Alternate Detour Recalculated:</strong> Primary road segment intersects flooded hazards. Safe detour trajectory computed around blockages.
+                        <strong>⚠️ Alternate Detour Recalculated:</strong> Primary road segment intersects flooded hazards. Avoidance detour trajectory computed around reported hazards.
                       </div>
                     )}
 
@@ -135,15 +135,27 @@ export default function RoutesTab({
                               <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#f3e8ff' }}>Alternative #{idx + 1}</span>
                               <span style={{ fontSize: '12px', color: '#c084fc', fontWeight: 'bold' }}>{alt.route_distance_km?.toFixed(2)} km</span>
                             </div>
-                            <p style={{ fontSize: '11px', color: '#94a3b8', margin: '2px 0 0' }}>{alt.warning_note}</p>
+                            <p style={{ fontSize: '11px', color: '#94a3b8', margin: '2px 0 0' }}>{alt.description || alt.warning_note}</p>
                           </div>
                         ))}
                       </div>
                     )}
 
+                    {route.stale_hazards_present && (
+                      <div style={{ marginTop: '8px', padding: '6px 10px', background: 'rgba(234, 179, 8, 0.15)', border: '1px solid rgba(234, 179, 8, 0.4)', borderRadius: '6px', fontSize: '11px', color: '#fef08a' }}>
+                        ⚠️ <strong>Freshness Advisory:</strong> Upstream hazard observations contain cached or historical survey data. Proceed with caution.
+                      </div>
+                    )}
+
+                    {route.data_sources_used && route.data_sources_used.length > 0 && (
+                      <div style={{ marginTop: '8px', fontSize: '11px', color: '#94a3b8' }}>
+                        <span>Feeds evaluated: {route.data_sources_used.join(' • ')}</span>
+                      </div>
+                    )}
+
                     <div className="route-safety-caveat">
                       <p>
-                        <strong>Non-Negotiable Safety Invariant:</strong> {route.safety_disclaimer || 'Roads without intersecting hazard polygons are designated "NO KNOWN HAZARD INTERSECTS THIS LOCATION". Unmonitored roads are not guaranteed clear. Water depth and live road closures are not modelled in static street graphs.'}
+                        <strong>Evacuation Safety Warning:</strong> {route.safety_disclaimer || 'Evacuation routes are computed based on currently known road conditions and flood hazard information. Real-time water depth, debris, and sudden flash floods may not be modeled. Never attempt to drive or walk through flooded roadways.'}
                       </p>
                     </div>
                   </>

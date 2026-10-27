@@ -524,6 +524,8 @@ export default function IncidentsTab({
                 const incCat = inc.incident_category || inc.category || 'FLOOD_REPORT'
                 const isVerified = incStatus === 'VERIFIED_MUNICIPAL'
                 const isResolved = incStatus === 'RESOLVED'
+                const isCorroborated = incStatus === 'COMMUNITY_CORROBORATED'
+                const isRecedingObserved = incStatus === 'COMMUNITY_RESOLUTION_OBSERVED'
                 const isPending = incStatus === 'PENDING_REVIEW'
 
                 return (
@@ -542,6 +544,16 @@ export default function IncidentsTab({
                         {isPending && (
                           <span className="badge pending">
                             ⚠️ CITIZEN REPORT · UNVERIFIED
+                          </span>
+                        )}
+                        {isCorroborated && (
+                          <span className="badge corroborated" style={{ background: 'rgba(168,85,247,0.15)', color: '#c084fc', border: '1px solid rgba(168,85,247,0.3)', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>
+                            👥 CORROBORATED
+                          </span>
+                        )}
+                        {isRecedingObserved && (
+                          <span className="badge receding" style={{ background: 'rgba(56,189,248,0.15)', color: '#38bdf8', border: '1px solid rgba(56,189,248,0.3)', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>
+                            🌊 RECEDING OBSERVED
                           </span>
                         )}
                         {isResolved && (
@@ -580,28 +592,28 @@ export default function IncidentsTab({
                         )}
                       </span>
 
-                      {/* Municipal Action Buttons */}
+                      {/* Community Corroboration & Observation Actions */}
                       <div className="item-actions">
-                        {isPending && (
-                          <button
-                            type="button"
-                            disabled={updatingId === inc.id}
-                            onClick={() => handleUpdateStatus(inc.id, 'VERIFIED_MUNICIPAL', 'Inspected and confirmed by GHMC DRF field team.')}
-                            className="btn-action verify"
-                            title="Verify Report as Municipal DRF"
-                          >
-                            Verify (DRF)
-                          </button>
-                        )}
                         {!isResolved && (
                           <button
                             type="button"
                             disabled={updatingId === inc.id}
-                            onClick={() => handleUpdateStatus(inc.id, 'RESOLVED', 'Water drained and cleared; traffic restored.')}
-                            className="btn-action resolve"
-                            title="Mark as Cleared / Resolved"
+                            onClick={() => handleUpdateStatus(inc.id, 'COMMUNITY_CORROBORATED', 'Community corroboration: additional citizen observed active flooding.')}
+                            className="btn-action verify"
+                            title="Corroborate that this flood condition is active"
                           >
-                            Resolve
+                            👍 Corroborate
+                          </button>
+                        )}
+                        {!isResolved && !isRecedingObserved && (
+                          <button
+                            type="button"
+                            disabled={updatingId === inc.id}
+                            onClick={() => handleUpdateStatus(inc.id, 'COMMUNITY_RESOLUTION_OBSERVED', 'Citizen observation: floodwater observed receding or cleared.')}
+                            className="btn-action resolve"
+                            title="Report that floodwaters are receding or cleared (community observation)"
+                          >
+                            🌊 Report Receding
                           </button>
                         )}
                       </div>

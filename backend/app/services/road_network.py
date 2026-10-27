@@ -98,6 +98,16 @@ class RoadNetworkService:
             self.is_loaded = False
             self._load_error = None
 
+    def set_graph_for_testing(self, G: nx.MultiDiGraph) -> None:
+        """Sets a mock or synthetic graph in-memory for deterministic unit testing."""
+        with self._lock:
+            self.G = G
+            self._node_ids = list(G.nodes())
+            coords = np.array([[G.nodes[n].get('x', 0.0), G.nodes[n].get('y', 0.0)] for n in self._node_ids])
+            self._kdtree = cKDTree(coords)
+            self.is_loaded = True
+            self._load_error = None
+
     def get_metadata(self) -> dict:
         self.load_graph()
         

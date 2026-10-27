@@ -36,5 +36,8 @@ ml/models/*.pkl
 *.graphml
 backend/cache/
 cache/
+backend/data/*.backup.*.json
+backend/data/migration_rollback_*.json
 .DS_Store
 Thumbs.db
+

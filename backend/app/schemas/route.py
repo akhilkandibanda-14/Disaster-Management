@@ -46,9 +46,29 @@ class EvacuationRouteResponse(BaseModel):
     warnings: List[str] = []
     alternatives: List[AlternativeRoute] = Field(
         default_factory=list,
-        description="Verified alternative evacuation routes computed on safe road network"
+        description="Verified alternative evacuation routes computed on evaluated hazard-avoidance road network"
+    )
+    data_sources_used: List[str] = Field(
+        default_factory=list,
+        description="Authoritative and municipal data sources queried for road and hazard conditions"
+    )
+    observation_freshness: Optional[str] = Field(
+        default=None,
+        description="Timestamp or freshness indicator of evaluated hazard feeds"
+    )
+    hazard_coverage_limitations: Optional[str] = Field(
+        default=None,
+        description="Known spatial/temporal limitations in active flood hazard coverage"
+    )
+    stale_hazards_present: bool = Field(
+        default=False,
+        description="Flag indicating if any upstream hazard feed returned cached or stale data"
+    )
+    validation_level: str = Field(
+        default="GEOMETRY_INTERSECTION_VALIDATED",
+        description="Validation rigor applied (e.g. GEOMETRY_INTERSECTION_VALIDATED)"
     )
     safety_disclaimer: str = Field(
-        default="Evacuation routes are computed based on currently known road conditions and municipal flood zones. Dynamic flood water flows, sudden debris, or unmonitored street depressions may alter conditions rapidly. Never enter moving floodwaters. Obey all on-ground emergency responder instructions.",
+        default="Evacuation routes are computed based on currently known road conditions and flood hazard information. Real-time water depth, debris, and sudden flash floods may not be modeled. Never attempt to drive or walk through flooded roadways.",
         description="Mandatory evacuation safety caveat"
     )

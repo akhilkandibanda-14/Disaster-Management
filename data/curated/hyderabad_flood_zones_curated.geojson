@@ -8,7 +8,7 @@
     "data_status": "PUBLIC_UNVERIFIED",
     "crs": "urn:ogc:def:crs:OGC:1.3:CRS84",
     "raw_checksum_sha256": "a5733c0b5ea769d4bc16a85beb01acb7277ca4c1ddb91fd957ab86f9f185ba2a",
-    "curated_at_utc": "2026-10-27T13:56:26Z",
+    "curated_at_utc": "2026-10-27T16:03:05Z",
     "total_features": 5
   },
   "features": [
@@ -32,7 +32,7 @@
         "crs": "EPSG:4326 (WGS84)",
         "data_classification": "HISTORICAL_VULNERABILITY",
         "raw_checksum_sha256": "a5733c0b5ea769d4bc16a85beb01acb7277ca4c1ddb91fd957ab86f9f185ba2a",
-        "curated_at_utc": "2026-10-27T13:56:26Z"
+        "curated_at_utc": "2026-10-27T16:03:05Z"
       },
       "geometry": {
         "type": "Polygon",
@@ -98,7 +98,7 @@
         "crs": "EPSG:4326 (WGS84)",
         "data_classification": "HISTORICAL_VULNERABILITY",
         "raw_checksum_sha256": "a5733c0b5ea769d4bc16a85beb01acb7277ca4c1ddb91fd957ab86f9f185ba2a",
-        "curated_at_utc": "2026-10-27T13:56:26Z"
+        "curated_at_utc": "2026-10-27T16:03:05Z"
       },
       "geometry": {
         "type": "Polygon",
@@ -148,7 +148,7 @@
         "crs": "EPSG:4326 (WGS84)",
         "data_classification": "HISTORICAL_VULNERABILITY",
         "raw_checksum_sha256": "a5733c0b5ea769d4bc16a85beb01acb7277ca4c1ddb91fd957ab86f9f185ba2a",
-        "curated_at_utc": "2026-10-27T13:56:26Z"
+        "curated_at_utc": "2026-10-27T16:03:05Z"
       },
       "geometry": {
         "type": "Polygon",
@@ -202,7 +202,7 @@
         "crs": "EPSG:4326 (WGS84)",
         "data_classification": "HISTORICAL_VULNERABILITY",
         "raw_checksum_sha256": "a5733c0b5ea769d4bc16a85beb01acb7277ca4c1ddb91fd957ab86f9f185ba2a",
-        "curated_at_utc": "2026-10-27T13:56:26Z"
+        "curated_at_utc": "2026-10-27T16:03:05Z"
       },
       "geometry": {
         "type": "Polygon",
@@ -252,7 +252,7 @@
         "crs": "EPSG:4326 (WGS84)",
         "data_classification": "HISTORICAL_VULNERABILITY",
         "raw_checksum_sha256": "a5733c0b5ea769d4bc16a85beb01acb7277ca4c1ddb91fd957ab86f9f185ba2a",
-        "curated_at_utc": "2026-10-27T13:56:26Z"
+        "curated_at_utc": "2026-10-27T16:03:05Z"
       },
       "geometry": {
         "type": "Polygon",

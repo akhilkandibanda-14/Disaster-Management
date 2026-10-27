@@ -53,6 +53,19 @@ class Settings(BaseSettings):
     def is_production(self) -> bool:
         return self.app_env.lower() in ("production", "prod")
 
+    def get_safe_db_summary(self) -> str:
+        """Returns sanitized database URL with masked credentials for logging and diagnostics."""
+        from urllib.parse import urlparse
+        try:
+            parsed = urlparse(self.database_url)
+            host = parsed.hostname or "localhost"
+            port = f":{parsed.port}" if parsed.port else ""
+            db_name = parsed.path.lstrip("/") or "disaster_management"
+            scheme = parsed.scheme or "postgresql"
+            return f"{scheme}://***:***@{host}{port}/{db_name}"
+        except Exception:
+            return "postgresql://***:***@localhost/disaster_management"
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, v):

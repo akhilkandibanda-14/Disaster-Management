@@ -381,12 +381,12 @@ export default function OverviewTab({
                   {isRouting ? (
                     <>
                       <span className="route-spinner" aria-hidden="true" />
-                      <span>{t.calculatingRoute || 'Computing Safe Evacuation Route...'}</span>
+                      <span>{t.calculatingRoute || 'Computing Evacuation Route...'}</span>
                     </>
                   ) : (
                     <>
                       <span className="route-btn-icon" aria-hidden="true">🚗</span>
-                      <span>{t.calculateRoute || 'Calculate Elevated Hazard-Free Route'}</span>
+                      <span>{t.calculateRoute || 'Calculate Evacuation Route'}</span>
                     </>
                   )}
                 </button>

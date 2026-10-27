@@ -1,17 +1,36 @@
+import json
+from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from app.main import app
+from app.schemas.incident import IncidentStatusUpdate
 from app.services.incident import get_incident_service
 
 client = TestClient(app)
 
 
 @pytest.fixture(autouse=True)
-def clean_incident_service():
-    """Reset incident service state before each test."""
+def clean_incident_service(tmp_path):
+    """
+    Reset incident service state before each test and isolate persistent storage.
+    Ensures that test execution NEVER writes to the git-tracked backend/data/incidents.json file.
+    """
     service = get_incident_service()
+    original_storage = service.storage_file
+    original_incidents = dict(service.incidents)
+
+    # Seed temporary test storage with an isolated copy
+    temp_storage = tmp_path / "test_isolated_incidents.json"
+    temp_storage.write_text(json.dumps(list(original_incidents.values())), encoding="utf-8")
+    service.storage_file = temp_storage
     service.rate_limit_tracker.clear()
+
     yield
+
+    # Restore pristine state
+    service.storage_file = original_storage
+    service.incidents = original_incidents
+    service.rate_limit_tracker.clear()
 
 
 def test_submit_valid_incident():
@@ -148,8 +167,15 @@ def test_list_and_filter_incidents():
         assert inc["category"] == "WATERLOGGING"
 
 
-def test_status_transition_verification_workflow():
-    # Submit report
+def test_public_provenance_escalation_rejection_and_community_corroboration():
+    """
+    Verifies that public web clients CANNOT claim official municipal verification (HTTP 403),
+    while explicitly permitted community corroboration is accepted (HTTP 200) without
+    converting unverified reports into severe hard-blocks.
+    """
+    service = get_incident_service()
+
+    # 1. Submit citizen report
     p = {
         "latitude": 17.3616,
         "longitude": 78.4747,
@@ -162,13 +188,114 @@ def test_status_transition_verification_workflow():
     assert create_resp.status_code == 201
     inc_id = create_resp.json()["id"]
 
-    # Verify report status via DRF Municipal Review
-    patch_resp = client.patch(
+    # 2. Public attempt to claim official municipal verification MUST be rejected with HTTP 403
+    unauthorized_resp = client.patch(
         f"/incidents/{inc_id}/status",
-        json={"status": "VERIFIED_MUNICIPAL", "reviewer_notes": "Verified on-site by DRF Field Unit 4."}
+        json={"status": "VERIFIED_MUNICIPAL", "reviewer_notes": "Unauthorized claim of official verification."}
     )
-    assert patch_resp.status_code == 200
-    updated = patch_resp.json()
-    assert updated["status"] == "VERIFIED_MUNICIPAL"
-    assert updated["reviewer_notes"] == "Verified on-site by DRF Field Unit 4."
-    assert updated["verified_at"] is not None
+    assert unauthorized_resp.status_code == 403
+    assert "unauthorized provenance escalation" in unauthorized_resp.json()["detail"].lower()
+
+    # 3. Public attempt to claim official rejection MUST also be rejected with HTTP 403
+    unauthorized_reject = client.patch(
+        f"/incidents/{inc_id}/status",
+        json={"status": "REJECTED", "reviewer_notes": "Unauthorized claim of official rejection."}
+    )
+    assert unauthorized_reject.status_code == 403
+
+    # 4. Public attempt to directly close incident to RESOLVED MUST be rejected with HTTP 403
+    unauthorized_resolve = client.patch(
+        f"/incidents/{inc_id}/status",
+        json={"status": "RESOLVED", "reviewer_notes": "Attempting anonymous public closure."}
+    )
+    assert unauthorized_resolve.status_code == 403
+    assert "unauthorized" in unauthorized_resolve.json()["detail"].lower()
+
+    # 5. Public community corroboration MUST succeed with HTTP 200
+    corroborate_resp = client.patch(
+        f"/incidents/{inc_id}/status",
+        json={"status": "COMMUNITY_CORROBORATED", "verification_note": "Corroborated by 3 local residents on site."}
+    )
+    assert corroborate_resp.status_code == 200
+    corroborated_data = corroborate_resp.json()
+    assert corroborated_data["verification_status"] == "COMMUNITY_CORROBORATED"
+    # Crucial safety check: data_status must remain unverified citizen report, NOT municipal
+    assert corroborated_data["data_status"] == "PUBLIC_UNVERIFIED_REPORT"
+    assert corroborated_data["report_count"] >= 2
+
+    # 6. Dedicated POST /incidents/{id}/corroborate endpoint succeeds with HTTP 200
+    ded_corr = client.post(f"/incidents/{inc_id}/corroborate")
+    assert ded_corr.status_code == 200
+    assert ded_corr.json()["report_count"] >= 3
+
+    # 7. Public resolution observation succeeds with HTTP 200 without closing incident
+    receding_resp = client.patch(
+        f"/incidents/{inc_id}/status",
+        json={"status": "COMMUNITY_RESOLUTION_OBSERVED", "verification_note": "Observed water receding in lane."}
+    )
+    assert receding_resp.status_code == 200
+    receding_data = receding_resp.json()
+    assert receding_data["verification_status"] == "COMMUNITY_RESOLUTION_OBSERVED"
+    # Verification safety: data_status is NOT RESOLVED_INCIDENT, still PUBLIC_UNVERIFIED_REPORT
+    assert receding_data["data_status"] == "PUBLIC_UNVERIFIED_REPORT"
+
+    # 8. Dedicated POST /incidents/{id}/resolution-observation endpoint succeeds with HTTP 200
+    ded_rec = client.post(f"/incidents/{inc_id}/resolution-observation")
+    assert ded_rec.status_code == 200
+    assert ded_rec.json()["verification_status"] == "COMMUNITY_RESOLUTION_OBSERVED"
+    assert ded_rec.json()["data_status"] == "PUBLIC_UNVERIFIED_REPORT"
+
+    # 9. Authoritative institutional verification succeeds via institutional path
+    inst_update = IncidentStatusUpdate(
+        verification_status="VERIFIED_MUNICIPAL",
+        verification_note="Verified on-site by DRF Field Unit 4.",
+    )
+    inst_result = service.update_status(inc_id, inst_update, is_institutional=True)
+    assert inst_result is not None
+    assert inst_result.verification_status == "VERIFIED_MUNICIPAL"
+    assert inst_result.data_status == "VERIFIED_MUNICIPAL"
+    assert inst_result.verified_at is not None
+
+    # 10. Authoritative institutional resolution succeeds via institutional path
+    resolve_update = IncidentStatusUpdate(
+        verification_status="RESOLVED",
+        verification_note="Officially drained and cleared by municipal emergency team.",
+    )
+    resolve_result = service.update_status(inc_id, resolve_update, is_institutional=True)
+    assert resolve_result is not None
+    assert resolve_result.verification_status == "RESOLVED"
+    assert resolve_result.data_status == "RESOLVED_INCIDENT"
+
+
+def test_public_callers_strictly_forbidden_from_closing_or_verifying_incidents():
+    """
+    Explicit regression test proving that anonymous public callers CANNOT:
+    - Assert VERIFIED_MUNICIPAL (HTTP 403)
+    - Assert RESOLVED (HTTP 403)
+    - Assert REJECTED (HTTP 403)
+    And can only perform community corroboration and resolution observations.
+    """
+    create_resp = client.post("/incidents", json={
+        "latitude": 17.3850,
+        "longitude": 78.4867,
+        "category": "WATERLOGGING",
+        "severity": "MODERATE",
+        "description": "Flooding on roadway under flyover.",
+    })
+    assert create_resp.status_code == 201
+    inc_id = create_resp.json()["id"]
+
+    for forbidden_status in ["RESOLVED", "VERIFIED_MUNICIPAL", "REJECTED"]:
+        resp = client.patch(f"/incidents/{inc_id}/status", json={"status": forbidden_status})
+        assert resp.status_code == 403, f"Expected 403 for public asserting {forbidden_status}, got {resp.status_code}"
+        assert "unauthorized" in resp.json()["detail"].lower()
+
+    # Permitted public actions:
+    corr_resp = client.patch(f"/incidents/{inc_id}/status", json={"status": "COMMUNITY_CORROBORATED"})
+    assert corr_resp.status_code == 200
+
+    rec_resp = client.patch(f"/incidents/{inc_id}/status", json={"status": "COMMUNITY_RESOLUTION_OBSERVED"})
+    assert rec_resp.status_code == 200
+    assert rec_resp.json()["data_status"] == "PUBLIC_UNVERIFIED_REPORT"
+
+

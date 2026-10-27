@@ -12,3 +12,4 @@ osmnx==2.1.1
 networkx==3.6.1
 shapely>=2.0.0
 pytest>=8.0.0
+alembic>=1.14.0

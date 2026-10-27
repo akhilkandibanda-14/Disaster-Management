@@ -251,7 +251,7 @@ class TestEndToEndUserAcceptanceWorkflows:
         assert route["route_distance_km"] > 0
         assert route["route_status"] == "ROUTE_AVAILABLE"
         assert len(route["geometry"]) > 1
-        assert route["road_condition_status"] in ("UNKNOWN", "CLEAR")
+        assert route["road_condition_status"] in ("UNKNOWN", "CLEAR", "HAZARDS_AVOIDED")
 
     def test_workflow_5_known_blocked_road_triggers_detour(self):
         # 1. Unconstrained route
