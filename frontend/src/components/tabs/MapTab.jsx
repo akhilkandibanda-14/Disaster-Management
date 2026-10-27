@@ -12,7 +12,8 @@ export default function MapTab({
   floodHazards,
   loading,
   hazardWarning,
-  onLocationSelect
+  onLocationSelect,
+  incidents = []
 }) {
   return (
     <div className="tab-map-view">
@@ -31,6 +32,7 @@ export default function MapTab({
             onLocationSelect={onLocationSelect}
             showLayersControl={true}
             height="calc(100vh - 160px)"
+            incidents={incidents}
           />
         </div>
 

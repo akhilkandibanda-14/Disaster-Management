@@ -196,6 +196,9 @@ class HazardService:
         
         self.cached_public_hazards: List[HazardRecord] = []
         self.last_provider_warnings: List[str] = []
+        self._sachet_cache: Optional[Tuple[datetime, List[HazardRecord]]] = None
+        self._glofas_cache: Optional[Tuple[datetime, List[HazardRecord]]] = None
+        self._cache_ttl_seconds: float = 60.0
         self._load_local_geojson()
 
     def _load_local_geojson(self) -> None:
@@ -355,10 +358,17 @@ class HazardService:
         Retrieves live authoritative CAP alerts from NDMA Sachet RSS feed for Telangana.
         Strictly filters for flood-relevant alerts, excluding earthquakes, tsunamis,
         cyclones, wildfires, and ambiguous weather advisories.
+        Includes caching (TTL 60s), rate-limit (429) detection, and graceful stale fallback.
         """
         url = "https://sachet.ndma.gov.in/cap_public_website/rss/rss_telangana.xml"
         now = datetime.now(timezone.utc)
         results = []
+
+        # Return cached alerts if within TTL and not running a synthetic test
+        if feed_content is None and self._sachet_cache is not None:
+            cache_time, cached_items = self._sachet_cache
+            if (now - cache_time).total_seconds() < self._cache_ttl_seconds:
+                return [item.model_copy() for item in cached_items]
 
         try:
             if feed_content is not None:
@@ -366,10 +376,33 @@ class HazardService:
             else:
                 with httpx.Client(timeout=timeout_sec, follow_redirects=True, headers={"User-Agent": "SafeMapAI/1.0"}) as client:
                     resp = client.get(url)
-                    if resp.status_code != 200:
+                    if resp.status_code == 429:
+                        warn_msg = "Rate limit reached on NDMA SACHET live alert service (HTTP 429)."
+                        logger.warning(warn_msg)
+                        self.last_provider_warnings.append(warn_msg)
+                        if self._sachet_cache is not None:
+                            stale_items = []
+                            for it in self._sachet_cache[1]:
+                                c = it.model_copy()
+                                c.is_stale = True
+                                c.data_status = "STALE"
+                                c.verification_note = f"Retained from cache ({self._sachet_cache[0].strftime('%H:%M:%S UTC')}); NDMA SACHET live feed rate-limited (HTTP 429)."
+                                stale_items.append(c)
+                            return stale_items
+                        return []
+                    elif resp.status_code != 200:
                         warn_msg = f"NDMA SACHET live alert service returned HTTP {resp.status_code}."
                         logger.warning(warn_msg)
                         self.last_provider_warnings.append(warn_msg)
+                        if self._sachet_cache is not None:
+                            stale_items = []
+                            for it in self._sachet_cache[1]:
+                                c = it.model_copy()
+                                c.is_stale = True
+                                c.data_status = "STALE"
+                                c.verification_note = f"Retained from cache ({self._sachet_cache[0].strftime('%H:%M:%S UTC')}); NDMA SACHET returned HTTP {resp.status_code}."
+                                stale_items.append(c)
+                            return stale_items
                         return []
                     xml_data = resp.content
 
@@ -379,10 +412,22 @@ class HazardService:
                 record = self.parse_cap_item(item, now=now, default_url=url, idx=idx + 1)
                 if record is not None:
                     results.append(record)
+
+            if feed_content is None:
+                self._sachet_cache = (now, [r.model_copy() for r in results])
         except Exception as err:
             warn_msg = f"NDMA SACHET live CAP alert feed was unavailable ({type(err).__name__})."
             logger.info(warn_msg)
             self.last_provider_warnings.append(warn_msg)
+            if self._sachet_cache is not None:
+                stale_items = []
+                for it in self._sachet_cache[1]:
+                    c = it.model_copy()
+                    c.is_stale = True
+                    c.data_status = "STALE"
+                    c.verification_note = f"Retained from cache ({self._sachet_cache[0].strftime('%H:%M:%S UTC')}); NDMA SACHET feed unreachable ({type(err).__name__})."
+                    stale_items.append(c)
+                return stale_items
             return []
 
         return results
@@ -391,16 +436,45 @@ class HazardService:
         """
         Retrieves Copernicus GloFAS river discharge forecast via Open-Meteo Flood API.
         Records model grid coordinates, discharge units, forecast date, and uncalibrated severity.
+        Includes caching (TTL 60s), rate-limit (429) detection, and graceful stale fallback.
         """
         url = "https://flood-api.open-meteo.com/v1/flood"
         now = datetime.now(timezone.utc)
         
+        # Check cache
+        if self._glofas_cache is not None:
+            cache_time, cached_items = self._glofas_cache
+            if (now - cache_time).total_seconds() < self._cache_ttl_seconds:
+                return [item.model_copy() for item in cached_items]
+
         try:
             with httpx.Client(timeout=timeout_sec, headers={"User-Agent": "SafeMapAI/1.0"}) as client:
                 resp = client.get(url, params={"latitude": latitude, "longitude": longitude, "daily": "river_discharge"})
-                if resp.status_code != 200:
+                if resp.status_code == 429:
+                    warn_msg = "Rate limit reached on Copernicus GloFAS river discharge forecast (HTTP 429)."
+                    self.last_provider_warnings.append(warn_msg)
+                    if self._glofas_cache is not None:
+                        stale_items = []
+                        for it in self._glofas_cache[1]:
+                            c = it.model_copy()
+                            c.is_stale = True
+                            c.data_status = "STALE"
+                            c.verification_note = f"Retained from cache ({self._glofas_cache[0].strftime('%H:%M:%S UTC')}); GloFAS API rate-limited (HTTP 429)."
+                            stale_items.append(c)
+                        return stale_items
+                    return []
+                elif resp.status_code != 200:
                     warn_msg = f"Copernicus GloFAS river discharge forecast returned HTTP {resp.status_code}."
                     self.last_provider_warnings.append(warn_msg)
+                    if self._glofas_cache is not None:
+                        stale_items = []
+                        for it in self._glofas_cache[1]:
+                            c = it.model_copy()
+                            c.is_stale = True
+                            c.data_status = "STALE"
+                            c.verification_note = f"Retained from cache ({self._glofas_cache[0].strftime('%H:%M:%S UTC')}); GloFAS API returned HTTP {resp.status_code}."
+                            stale_items.append(c)
+                        return stale_items
                     return []
                 data = resp.json()
                 daily = data.get("daily", {})
@@ -416,39 +490,48 @@ class HazardService:
                     grid_offset_km = haversine_distance_km(latitude, longitude, ret_lat, ret_lon)
                     relevance_note = "Grid cell aligns with upper Musi River catchment corridor." if grid_offset_km <= 25.0 else f"Grid cell offset ({grid_offset_km:.1f} km) from target location."
 
-                    return [
-                        HazardRecord(
-                            hazard_id="GLOFAS-MUSI-001",
-                            hazard_type="RIVER_OVERFLOW",
-                            title=f"Musi River Modelled Discharge ({current_discharge:.1f} m³/s)",
-                            description=f"Copernicus Emergency Management Service GloFAS forecast indicates modelled river discharge of {current_discharge:.1f} m³/s in the Musi River basin for {forecast_date_str}.",
-                            severity="UNKNOWN",  # Uncalibrated: DO NOT assign arbitrary flood levels without validated rating curves
-                            latitude=ret_lat,
-                            longitude=ret_lon,
-                            geometry=None,
-                            source_name="Copernicus EMS / GloFAS (Open-Meteo)",
-                            source_url="https://flood-api.open-meteo.com",
-                            source_type="MODEL_FORECAST",
-                            requested_coordinates=(latitude, longitude),
-                            returned_coordinates=(ret_lat, ret_lon),
-                            measurement_unit="m³/s",
-                            forecast_date=forecast_date_str,
-                            raw_value=current_discharge,
-                            catchment_context="Musi River Basin (Krishna Catchment)",
-                            administrative_area="Hyderabad Urban Catchment",
-                            geographic_uncertainty=f"GloFAS 0.05° (~5km) gridded hydrological model cell at ({ret_lat:.3f}, {ret_lon:.3f}), {grid_offset_km:.2f} km from queried coordinates. {relevance_note} Modelled forecast, NOT observed telemetry. Severity is uncalibrated without validated urban hydrodynamic rating curves.",
-                            publication_time=now,
-                            last_retrieved=now,
-                            is_active=True,
-                            is_stale=False,
-                            data_status="AUTHORITATIVE",
-                            verification_note="Modelled river discharge forecast from European Commission Copernicus GloFAS via Open-Meteo API. Model forecasts are NOT observed gauge telemetry; urban flood severity thresholds are uncalibrated for Musi River urban reaches."
-                        )
-                    ]
+                    record = HazardRecord(
+                        hazard_id="GLOFAS-MUSI-001",
+                        hazard_type="RIVER_OVERFLOW",
+                        title=f"Musi River Modelled Discharge ({current_discharge:.1f} m³/s)",
+                        description=f"Copernicus Emergency Management Service GloFAS forecast indicates modelled river discharge of {current_discharge:.1f} m³/s in the Musi River basin for {forecast_date_str}.",
+                        severity="UNKNOWN",  # Uncalibrated: DO NOT assign arbitrary flood levels without validated rating curves
+                        latitude=ret_lat,
+                        longitude=ret_lon,
+                        geometry=None,
+                        source_name="Copernicus EMS / GloFAS (Open-Meteo)",
+                        source_url="https://flood-api.open-meteo.com",
+                        source_type="MODEL_FORECAST",
+                        requested_coordinates=(latitude, longitude),
+                        returned_coordinates=(ret_lat, ret_lon),
+                        measurement_unit="m³/s",
+                        forecast_date=forecast_date_str,
+                        raw_value=current_discharge,
+                        catchment_context="Musi River Basin (Krishna Catchment)",
+                        administrative_area="Hyderabad Urban Catchment",
+                        geographic_uncertainty=f"GloFAS 0.05° (~5km) gridded hydrological model cell at ({ret_lat:.3f}, {ret_lon:.3f}), {grid_offset_km:.2f} km from queried coordinates. {relevance_note} Modelled forecast, NOT observed telemetry. Severity is uncalibrated without validated urban hydrodynamic rating curves.",
+                        publication_time=now,
+                        last_retrieved=now,
+                        is_active=True,
+                        is_stale=False,
+                        data_status="AUTHORITATIVE",
+                        verification_note="Modelled river discharge forecast from European Commission Copernicus GloFAS via Open-Meteo API. Model forecasts are NOT observed gauge telemetry; urban flood severity thresholds are uncalibrated for Musi River urban reaches."
+                    )
+                    self._glofas_cache = (now, [record.model_copy()])
+                    return [record]
         except Exception as err:
             warn_msg = f"Copernicus GloFAS river discharge forecast unavailable ({type(err).__name__})."
             logger.info(warn_msg)
             self.last_provider_warnings.append(warn_msg)
+            if self._glofas_cache is not None:
+                stale_items = []
+                for it in self._glofas_cache[1]:
+                    c = it.model_copy()
+                    c.is_stale = True
+                    c.data_status = "STALE"
+                    c.verification_note = f"Retained from cache ({self._glofas_cache[0].strftime('%H:%M:%S UTC')}); GloFAS feed unavailable ({type(err).__name__})."
+                    stale_items.append(c)
+                return stale_items
             return []
 
         return []

@@ -5,7 +5,7 @@ from typing import Optional, Union, List, Any
 
 from app.schemas.resources import ShelterResponse, RoadConditionResponse
 from app.models.resources import RoadCondition
-from app.schemas.route import EvacuationRouteResponse
+from app.schemas.route import AlternativeRoute, EvacuationRouteResponse
 from app.services.road_network import road_network_service
 
 
@@ -141,7 +141,8 @@ def build_graph_route(
     dest_lat: float,
     dest_lon: float,
     shelter: Optional[ShelterResponse] = None,
-    road_conditions: Optional[List[Union[RoadConditionResponse, RoadCondition, dict]]] = None
+    road_conditions: Optional[List[Union[RoadConditionResponse, RoadCondition, dict]]] = None,
+    compute_alternatives: bool = True
 ) -> EvacuationRouteResponse:
     
     # 1. Ensure the road network is loaded
@@ -282,18 +283,65 @@ def build_graph_route(
     geometry.append([dest_lon, dest_lat])
     
     route_distance_km = route_length / 1000.0
+    is_rerouted = (road_condition_status == "HAZARDS_AVOIDED")
+    if road_conditions is not None and route_distance_km > 0:
+        speed_kmh = 18.0 if is_rerouted else 30.0
+        estimated_duration_min = max(1, round((route_distance_km / speed_kmh) * 60))
+    else:
+        estimated_duration_min = None
+
+    # Compute alternative evacuation path if requested
+    alternatives: List[AlternativeRoute] = []
+    if compute_alternatives and len(route_nodes) > 3:
+        try:
+            mid = len(route_nodes) // 2
+            u_pen = route_nodes[mid]
+            v_pen = route_nodes[mid + 1]
+            edges_to_avoid = {(u_pen, v_pen, k) for k in G_eval[u_pen][v_pen]}
+            if G_eval.has_edge(v_pen, u_pen):
+                edges_to_avoid.update({(v_pen, u_pen, k) for k in G_eval[v_pen][u_pen]})
+            G_alt = nx.restricted_view(G_eval, nodes=[], edges=edges_to_avoid)
+            if nx.has_path(G_alt, orig_node, dest_node):
+                alt_nodes = nx.shortest_path(G_alt, orig_node, dest_node, weight='length')
+                alt_len = nx.shortest_path_length(G_alt, orig_node, dest_node, weight='length')
+                alt_dist_km = round(alt_len / 1000.0, 2)
+                if alt_nodes != route_nodes and alt_dist_km <= route_distance_km * 2.5:
+                    alt_geom = [[origin_lon, origin_lat]]
+                    for j in range(len(alt_nodes) - 1):
+                        u_a, v_a = alt_nodes[j], alt_nodes[j + 1]
+                        e_data = min(G_alt[u_a][v_a].values(), key=lambda x: x.get("length", float("inf")))
+                        if "geometry" in e_data:
+                            alt_geom.extend(list(e_data["geometry"].coords)[:-1])
+                        else:
+                            alt_geom.append([G.nodes[u_a]['x'], G.nodes[u_a]['y']])
+                    alt_geom.append([G.nodes[dest_node]['x'], G.nodes[dest_node]['y']])
+                    alt_geom.append([dest_lon, dest_lat])
+                    alt_dur = max(1, round((alt_dist_km / 22.0) * 60)) if road_conditions is not None else None
+                    alternatives.append(AlternativeRoute(
+                        geometry=alt_geom,
+                        route_distance_km=alt_dist_km,
+                        estimated_duration_min=alt_dur,
+                        road_condition_status="CLEAR" if not is_rerouted else "HAZARDS_AVOIDED",
+                        description=f"Secondary arterial bypass route via {alt_dist_km:.2f} km" + (f" (~{alt_dur} min)." if alt_dur else ".")
+                    ))
+        except Exception:
+            pass
+
+    # Mandatory route safety warning
+    safety_disclaimer_note = "Safety notice: Evacuation routes cannot be guaranteed 100% safe from dynamic rapid inundation; heed local emergency authority directions."
+    if safety_disclaimer_note not in warnings:
+        warnings.append(safety_disclaimer_note)
 
     shelter_id = getattr(shelter, 'id', None)
     shelter_name = getattr(shelter, 'name', None)
     facility_id = getattr(shelter, 'facility_id', None) or getattr(shelter, 'shelter_id', None)
     destination_name = getattr(shelter, 'name', None)
     destination_type = getattr(shelter, 'facility_type', None) or ("SHELTER" if shelter is not None else None)
-    is_rerouted = (road_condition_status == "HAZARDS_AVOIDED")
 
     return EvacuationRouteResponse(
         geometry=geometry,
         route_distance_km=round(route_distance_km, 2),
-        estimated_duration_min=None,
+        estimated_duration_min=estimated_duration_min,
         origin_node=orig_node,
         destination_node=dest_node,
         origin_snap_distance_km=round(origin_snap["distance_km"], 3),
@@ -307,7 +355,8 @@ def build_graph_route(
         destination_name=destination_name,
         destination_type=destination_type,
         is_rerouted=is_rerouted,
-        warnings=warnings
+        warnings=warnings,
+        alternatives=alternatives
     )
 
 

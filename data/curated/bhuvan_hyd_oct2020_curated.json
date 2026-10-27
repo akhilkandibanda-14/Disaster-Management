@@ -43,6 +43,6 @@
   "access_restrictions": "Disaster management support geoportal layer. Raw full-resolution GeoTIFF inundation rasters require authorized ISRO/NRSC nodal credentials and formal NDMA/State Government requisition.",
   "data_classification": "HISTORICAL_INUNDATION",
   "curation_notes": "Satellite flood extent represents open-water ponding visible on 18 Oct 2020. Clouds, heavy tree canopy, and dense urban building shadows can cause false negatives (sub-canopy or street-level under-bridge flooding undetected).",
-  "raw_checksum_sha256": "7e84cb166d1cfac01f5298bdfc76b664b053894103070bf87e1616f1a01e2d20",
-  "curated_at_utc": "2026-10-26T18:20:03Z"
+  "raw_checksum_sha256": "6052e634db303275bab3de8ebf58db554a336ab8d965657f4b7d58cd258800e3",
+  "curated_at_utc": "2026-10-27T13:56:26Z"
 }

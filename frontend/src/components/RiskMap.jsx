@@ -151,7 +151,8 @@ export default function RiskMap({
   height = '100%',
   activeLayers,
   tileMode: externalTileMode,
-  onTileModeChange
+  onTileModeChange,
+  incidents = []
 }) {
   const [hasTileError, setHasTileError] = useState(false)
   const [internalTileMode, setInternalTileMode] = useState('street')
@@ -170,12 +171,14 @@ export default function RiskMap({
   const [internalShowShelters, setInternalShowShelters] = useState(true)
   const [internalShowHospitals, setInternalShowHospitals] = useState(true)
   const [internalShowRoute, setInternalShowRoute] = useState(true)
+  const [internalShowIncidents, setInternalShowIncidents] = useState(true)
 
   const showHazards = activeLayers?.risk !== undefined ? activeLayers.risk : internalShowHazards
   const showRoads = activeLayers?.roads !== undefined ? activeLayers.roads : internalShowRoads
   const showShelters = activeLayers?.shelters !== undefined ? activeLayers.shelters : internalShowShelters
   const showHospitals = activeLayers?.hospitals !== undefined ? activeLayers.hospitals : internalShowHospitals
   const showRoute = activeLayers?.route !== undefined ? activeLayers.route : internalShowRoute
+  const showIncidents = activeLayers?.incidents !== undefined ? activeLayers.incidents : internalShowIncidents
 
   const center = [location?.latitude ?? 17.385, location?.longitude ?? 78.4867]
   const routePositions = (route?.geometry && showRoute)
@@ -249,6 +252,14 @@ export default function RiskMap({
               onChange={(e) => setInternalShowHospitals(e.target.checked)} 
             />
             <span className="checkbox-label">Hospitals</span>
+          </label>
+          <label className="layer-checkbox">
+            <input 
+              type="checkbox" 
+              checked={showIncidents} 
+              onChange={(e) => setInternalShowIncidents(e.target.checked)} 
+            />
+            <span className="checkbox-label">Citizen Reports</span>
           </label>
           {route && (
             <label className="layer-checkbox">
@@ -523,6 +534,91 @@ export default function RiskMap({
           )
         })}
 
+        {/* Citizen Incident Reports Layer */}
+        {showIncidents && incidents && incidents.map((inc) => {
+          const isVerified = inc.verification_status === 'VERIFIED_MUNICIPAL'
+          const isPending = inc.verification_status === 'PENDING_REVIEW'
+          const isResolved = inc.verification_status === 'RESOLVED'
+          const markerColor = isVerified ? '#10b981' : isResolved ? '#3b82f6' : '#f97316'
+          
+          return (
+            <CircleMarker
+              key={inc.incident_id || `${inc.latitude}-${inc.longitude}`}
+              center={[inc.latitude, inc.longitude]}
+              pathOptions={{
+                color: '#ffffff',
+                fillColor: markerColor,
+                fillOpacity: 0.9,
+                weight: 2
+              }}
+              radius={7}
+            >
+              <Popup>
+                <div style={{ minWidth: '220px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <span style={{
+                      fontSize: '10px',
+                      padding: '2px 6px',
+                      borderRadius: '4px',
+                      fontWeight: 'bold',
+                      background: isVerified ? 'rgba(16,185,129,0.2)' : 'rgba(249,115,22,0.2)',
+                      color: markerColor
+                    }}>
+                      {isVerified ? '✅ DRF VERIFIED' : isResolved ? 'COMPLETED' : '⚠️ CITIZEN REPORT (UNVERIFIED)'}
+                    </span>
+                    <span style={{ fontSize: '10px', color: '#94a3b8' }}>
+                      {inc.incident_category?.replace('_', ' ')}
+                    </span>
+                  </div>
+                  <strong style={{ fontSize: '13px', display: 'block', margin: '4px 0' }}>{inc.title}</strong>
+                  <p style={{ fontSize: '11px', color: '#cbd5e1', margin: '4px 0', lineHeight: '1.4' }}>
+                    {inc.description}
+                  </p>
+                  <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '6px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '4px' }}>
+                    <span>Severity: <strong>{inc.severity}</strong></span>
+                    {inc.report_count > 1 && (
+                      <span style={{ marginLeft: '8px', color: '#38bdf8' }}>👥 {inc.report_count} reports</span>
+                    )}
+                    <div style={{ marginTop: '2px' }}>
+                      Reported: {inc.reported_at ? new Date(inc.reported_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'}
+                    </div>
+                  </div>
+                </div>
+              </Popup>
+            </CircleMarker>
+          )
+        })}
+
+        {/* Alternative Routes if computed */}
+        {showRoute && route?.alternatives && route.alternatives.map((alt, idx) => {
+          if (!alt.geometry || alt.geometry.length < 2) return null
+          const altPositions = alt.geometry.map(([longitude, latitude]) => [latitude, longitude])
+          return (
+            <Polyline
+              key={`alt-route-${idx}`}
+              positions={altPositions}
+              pathOptions={{
+                color: '#a855f7',
+                weight: 3.5,
+                opacity: 0.75,
+                dashArray: '6, 8'
+              }}
+            >
+              <Popup>
+                <div style={{ minWidth: '180px' }}>
+                  <strong style={{ color: '#a855f7' }}>Alternative Route #{idx + 1}</strong>
+                  <div style={{ fontSize: '11px', marginTop: '4px' }}>
+                    Distance: <strong>{alt.route_distance_km?.toFixed(2)} km</strong>
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+                    {alt.warning_note || 'Secondary trajectory calculated avoiding primary road segments'}
+                  </div>
+                </div>
+              </Popup>
+            </Polyline>
+          )
+        })}
+
         {/* Evacuation Route Polyline (Two-layer: white casing under colored line) */}
         {showRoute && routePositions.length > 1 && (
           <>
@@ -566,9 +662,13 @@ export default function RiskMap({
         <span className="legend-item"><i className="legend-dot" style={{ backgroundColor: '#ef4444' }} />Flooded Road</span>
         <span className="legend-item"><i className="legend-dot" style={{ backgroundColor: '#ef4444', border: '1px solid #fff' }} />Authoritative Alert</span>
         <span className="legend-item"><i className="legend-dot" style={{ backgroundColor: '#f59e0b' }} />Municipal Flood Zone</span>
+        <span className="legend-item"><i className="legend-dot" style={{ backgroundColor: '#f97316', border: '1px solid #fff' }} />Citizen Report</span>
         <span className="legend-item"><i className="legend-dot" style={{ backgroundColor: '#c084fc' }} />[DEMO] Hazard</span>
         <span className="legend-item"><i className="legend-dot" style={{ backgroundColor: '#1d5fd1' }} />OSM Route</span>
         <span className="legend-item"><i className="legend-dot" style={{ backgroundColor: '#f59e0b' }} />Hazard Detour</span>
+        {route?.alternatives && route.alternatives.length > 0 && (
+          <span className="legend-item"><i className="legend-dot" style={{ backgroundColor: '#a855f7' }} />Alternative Route</span>
+        )}
       </div>
     </div>
   )

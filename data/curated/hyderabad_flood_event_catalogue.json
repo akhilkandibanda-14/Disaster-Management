@@ -51,8 +51,8 @@
       "original_reported_discharge_cumec": null,
       "correction_rationale": "Discharge reclassified from direct observation to hydraulic post-event estimate (slope-area method). Cited URL is a generic portal, not a primary data table."
     },
-    "raw_checksum_sha256": "f4b695be37d417bece37d260603bd820182291bcf638e6959d775878ff90f436",
-    "curated_at_utc": "2026-10-26T18:20:03Z"
+    "raw_checksum_sha256": "5aaac3e9ee26d5066bb5a0de521fb204c03eede0f4fc7638a1479e73be5f0eaa",
+    "curated_at_utc": "2026-10-27T13:56:26Z"
   },
   {
     "event_id": "HYD-EVT-2000-01",
@@ -107,8 +107,8 @@
       "original_reported_discharge_cumec": 1250.0,
       "correction_rationale": "Peak river discharge of 1250.0 cumec stripped from observation field because no Musi stream-gauge telemetry existed in 2000; preserved in audit trail as unsupported estimate."
     },
-    "raw_checksum_sha256": "f4b695be37d417bece37d260603bd820182291bcf638e6959d775878ff90f436",
-    "curated_at_utc": "2026-10-26T18:20:03Z"
+    "raw_checksum_sha256": "5aaac3e9ee26d5066bb5a0de521fb204c03eede0f4fc7638a1479e73be5f0eaa",
+    "curated_at_utc": "2026-10-27T13:56:26Z"
   },
   {
     "event_id": "HYD-EVT-2008-01",
@@ -161,8 +161,8 @@
       "original_reported_discharge_cumec": null,
       "correction_rationale": "Downgraded confidence from HIGH to LOW; agency corrected to AP Irrigation Department; discharge reclassified as dam outflow estimate rather than stream observation."
     },
-    "raw_checksum_sha256": "f4b695be37d417bece37d260603bd820182291bcf638e6959d775878ff90f436",
-    "curated_at_utc": "2026-10-26T18:20:03Z"
+    "raw_checksum_sha256": "5aaac3e9ee26d5066bb5a0de521fb204c03eede0f4fc7638a1479e73be5f0eaa",
+    "curated_at_utc": "2026-10-27T13:56:26Z"
   },
   {
     "event_id": "HYD-EVT-2016-01",
@@ -216,8 +216,8 @@
       "original_reported_discharge_cumec": 210.0,
       "correction_rationale": "Stripped unsupported 210 cumec river discharge. Flooding was caused by lake surplus nalas in Nizampet, not Musi River overflow."
     },
-    "raw_checksum_sha256": "f4b695be37d417bece37d260603bd820182291bcf638e6959d775878ff90f436",
-    "curated_at_utc": "2026-10-26T18:20:03Z"
+    "raw_checksum_sha256": "5aaac3e9ee26d5066bb5a0de521fb204c03eede0f4fc7638a1479e73be5f0eaa",
+    "curated_at_utc": "2026-10-27T13:56:26Z"
   },
   {
     "event_id": "HYD-EVT-2020-01",
@@ -278,8 +278,8 @@
       "original_reported_discharge_cumec": null,
       "correction_rationale": "Downgraded confidence from VERY_HIGH to HIGH because river discharge is an outflow estimation rather than physical gauge telemetry and satellite scene was captured post-peak."
     },
-    "raw_checksum_sha256": "f4b695be37d417bece37d260603bd820182291bcf638e6959d775878ff90f436",
-    "curated_at_utc": "2026-10-26T18:20:03Z"
+    "raw_checksum_sha256": "5aaac3e9ee26d5066bb5a0de521fb204c03eede0f4fc7638a1479e73be5f0eaa",
+    "curated_at_utc": "2026-10-27T13:56:26Z"
   },
   {
     "event_id": "HYD-EVT-2021-01",
@@ -333,8 +333,8 @@
       "original_reported_discharge_cumec": 95.0,
       "correction_rationale": "Stripped unsupported discharge of 95.0 cumec. Event was short-duration urban stormwater surge with no river overflow."
     },
-    "raw_checksum_sha256": "f4b695be37d417bece37d260603bd820182291bcf638e6959d775878ff90f436",
-    "curated_at_utc": "2026-10-26T18:20:03Z"
+    "raw_checksum_sha256": "5aaac3e9ee26d5066bb5a0de521fb204c03eede0f4fc7638a1479e73be5f0eaa",
+    "curated_at_utc": "2026-10-27T13:56:26Z"
   },
   {
     "event_id": "HYD-EVT-2022-01",
@@ -387,8 +387,8 @@
       "original_reported_discharge_cumec": null,
       "correction_rationale": "Confidence adjusted from HIGH to MEDIUM to reflect that discharge is a reservoir gate release conversion rather than physical stream telemetry."
     },
-    "raw_checksum_sha256": "f4b695be37d417bece37d260603bd820182291bcf638e6959d775878ff90f436",
-    "curated_at_utc": "2026-10-26T18:20:03Z"
+    "raw_checksum_sha256": "5aaac3e9ee26d5066bb5a0de521fb204c03eede0f4fc7638a1479e73be5f0eaa",
+    "curated_at_utc": "2026-10-27T13:56:26Z"
   },
   {
     "event_id": "HYD-EVT-2023-01",
@@ -442,7 +442,7 @@
       "original_reported_discharge_cumec": 85.0,
       "correction_rationale": "Stripped unsupported discharge of 85.0 cumec. Event was urban transport bottleneck waterlogging without river gauge records."
     },
-    "raw_checksum_sha256": "f4b695be37d417bece37d260603bd820182291bcf638e6959d775878ff90f436",
-    "curated_at_utc": "2026-10-26T18:20:03Z"
+    "raw_checksum_sha256": "5aaac3e9ee26d5066bb5a0de521fb204c03eede0f4fc7638a1479e73be5f0eaa",
+    "curated_at_utc": "2026-10-27T13:56:26Z"
   }
 ]

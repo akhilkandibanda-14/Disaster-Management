@@ -8,6 +8,7 @@ import RoutesTab from './components/tabs/RoutesTab'
 import SheltersTab from './components/tabs/SheltersTab'
 import AlertsTab from './components/tabs/AlertsTab'
 import AboutTab from './components/tabs/AboutTab'
+import IncidentsTab from './components/tabs/IncidentsTab'
 import OperationsDashboard from './components/OperationsDashboard'
 import { translations } from './utils/translations'
 
@@ -58,6 +59,7 @@ export default function App() {
   const [hydrology, setHydrology] = useState(null)
   const [floodHazards, setFloodHazards] = useState([])
   const [hazardWarning, setHazardWarning] = useState(null)
+  const [incidents, setIncidents] = useState([])
   const [loading, setLoading] = useState(true)
   const [isRouting, setIsRouting] = useState(false)
   const [error, setError] = useState('')
@@ -92,7 +94,8 @@ export default function App() {
         gaugeList, 
         hydroData,
         hazardData,
-        locationWarningData
+        locationWarningData,
+        incidentList
       ] = await Promise.all([
         request('/health').catch(() => ({})),
         request(`/weather?${query}`).catch(() => null),
@@ -105,7 +108,8 @@ export default function App() {
         request('/gauges').catch(() => []),
         request(`/hydrology/water-level?${query}`).catch(() => null),
         request('/flood-hazards').catch(() => ({ hazards: [] })),
-        request(`/flood-hazards/check-location?${query}`).catch(() => null)
+        request(`/flood-hazards/check-location?${query}`).catch(() => null),
+        request('/incidents').catch(() => ({ incidents: [] }))
       ])
       
       setApiStatus(health?.demo_mode ? 'API Online · Demo Mode' : 'API Online')
@@ -146,6 +150,7 @@ export default function App() {
       setHydrology(hydroData)
       setFloodHazards(hazardData?.hazards || [])
       setHazardWarning(locationWarningData)
+      setIncidents(incidentList?.incidents || [])
     } catch (loadError) {
       setApiStatus('API Unavailable')
       setError(loadError.message)
@@ -205,7 +210,8 @@ export default function App() {
       
       const payload = { 
         origin: { latitude: location.latitude, longitude: location.longitude },
-        destination: { latitude: destLat, longitude: destLon }
+        destination: { latitude: destLat, longitude: destLon },
+        compute_alternatives: true
       }
       if (facId) {
         payload.facility_id = String(facId)
@@ -301,6 +307,7 @@ export default function App() {
             onNavigateToTab={setActiveTab}
             isSevereWeather={isSevereWeather}
             t={t}
+            incidents={incidents}
           />
         )}
 
@@ -317,6 +324,7 @@ export default function App() {
             loading={loading}
             hazardWarning={hazardWarning}
             onLocationSelect={handleLocationSelect}
+            incidents={incidents}
           />
         )}
 
@@ -333,6 +341,7 @@ export default function App() {
             isRouting={isRouting}
             onCalculateRoute={() => calculateRouteForFacility(selectedFacility)}
             onLocationSelect={handleLocationSelect}
+            incidents={incidents}
           />
         )}
 
@@ -370,6 +379,20 @@ export default function App() {
             floodHazards={floodHazards}
             hazardWarning={hazardWarning}
             onLocationSelect={handleLocationSelect}
+          />
+        )}
+
+        {activeTab === 'incidents' && (
+          <IncidentsTab
+            location={location}
+            incidents={incidents}
+            onRefreshIncidents={() => {
+              request('/incidents')
+                .then(res => setIncidents(res?.incidents || []))
+                .catch(() => {})
+            }}
+            apiBaseUrl={apiBaseUrl}
+            t={t}
           />
         )}
 

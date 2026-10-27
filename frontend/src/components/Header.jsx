@@ -20,6 +20,7 @@ export default function Header({
     { id: 'routes', label: t.routesTab || 'Evacuation Routes', icon: '🚗' },
     { id: 'directory', label: t.directoryTab || 'Emergency Directory', icon: '🚨' },
     { id: 'protocols', label: t.protocolsTab || 'Safety Protocols', icon: '🛡️' },
+    { id: 'incidents', label: t.incidentsTab || 'Report Incident', icon: '📢' },
     { id: 'operations', label: t.operationsTab || 'Operations Control', icon: '⚙️' },
     { id: 'about', label: t.aboutTab || 'Data Sources & Limits', icon: 'ℹ️' },
   ]

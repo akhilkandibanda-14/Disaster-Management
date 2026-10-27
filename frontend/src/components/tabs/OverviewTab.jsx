@@ -20,7 +20,8 @@ export default function OverviewTab({
   onLocationSelect,
   onNavigateToTab,
   isSevereWeather = false,
-  t = {}
+  t = {},
+  incidents = []
 }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [activeLayers, setActiveLayers] = useState({
@@ -28,7 +29,8 @@ export default function OverviewTab({
     shelters: true,
     hospitals: true,
     roads: true,
-    route: true
+    route: true,
+    incidents: true
   })
   const [tileMode, setTileMode] = useState('street')
 
@@ -203,6 +205,13 @@ export default function OverviewTab({
               >
                 🏁 {t.layerRoute || 'Evac Route'}
               </button>
+              <button
+                type="button"
+                className={`layer-pill ${activeLayers.incidents ? 'active incidents' : ''}`}
+                onClick={() => toggleLayer('incidents')}
+              >
+                📢 {t.layerIncidents || 'Citizen Reports'}
+              </button>
             </div>
 
             {/* Leaflet Map Canvas */}
@@ -221,6 +230,7 @@ export default function OverviewTab({
               activeLayers={activeLayers}
               tileMode={tileMode}
               showLayersControl={false}
+              incidents={incidents}
             />
 
             {/* Bottom Quick Coordinates Inspector */}
@@ -397,7 +407,7 @@ export default function OverviewTab({
                             <strong className="stat-val">
                               {route.route_distance_km != null 
                                 ? `${route.route_distance_km.toFixed(2)} km` 
-                                : (route.distance_km != null ? `${route.distance_km.toFixed(2)} km` : '4.71 km')}
+                                : (route.distance_km != null ? `${route.distance_km.toFixed(2)} km` : 'N/A')}
                             </strong>
                           </div>
                           <div className="stat-unit">
@@ -405,7 +415,7 @@ export default function OverviewTab({
                             <strong className="stat-val">
                               {route.estimated_duration_min != null 
                                 ? `${Math.round(route.estimated_duration_min)} min` 
-                                : (route.estimated_travel_time_minutes != null ? `${Math.round(route.estimated_travel_time_minutes)} min` : '9 min')}
+                                : (route.estimated_travel_time_minutes != null ? `${Math.round(route.estimated_travel_time_minutes)} min` : 'Not estimated')}
                             </strong>
                           </div>
                           <div className="stat-unit">
@@ -421,8 +431,13 @@ export default function OverviewTab({
                             <strong>⚠️ Detour Active:</strong> Submerged primary roads avoided via OpenStreetMap detour.
                           </div>
                         )}
+                        {route.alternatives && route.alternatives.length > 0 && (
+                          <div className="route-detour-notice-small" style={{ borderColor: '#a855f7', color: '#d8b4fe' }}>
+                            <strong>🔀 Alternatives:</strong> {route.alternatives.length} alternative route(s) computed.
+                          </div>
+                        )}
                         <p className="route-limitation-tiny">
-                          Calculated on static OSM drive network. Real-time water depth unmodelled.
+                          {route.safety_disclaimer || 'Calculated on static OSM drive network. Real-time water depth unmodelled. Never cross moving floodwaters.'}
                         </p>
                       </div>
                     )}

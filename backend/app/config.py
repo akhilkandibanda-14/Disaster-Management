@@ -78,6 +78,9 @@ class Settings(BaseSettings):
         return "" if v is None else str(v)
 
     def __init__(self, **values):
+        for alias in ("WEATHER_API_KEY", "openweather_api_key", "OPENWEATHER_API_KEY"):
+            if alias in values and "weather_api_key" not in values:
+                values["weather_api_key"] = values.pop(alias)
         super().__init__(**values)
         if self.app_env.lower() in ("production", "prod", "staging"):
             if "demo_mode" not in values and "DEMO_MODE" not in os.environ:
@@ -89,7 +92,7 @@ class Settings(BaseSettings):
         if env_lower in ("production", "prod", "staging"):
             if "demo_mode" not in self.model_fields_set and "DEMO_MODE" not in os.environ:
                 self.demo_mode = False
-        if not self.weather_api_key:
+        if "weather_api_key" not in self.model_fields_set and not self.weather_api_key:
             env_key = os.environ.get("WEATHER_API_KEY") or os.environ.get("OPENWEATHER_API_KEY")
             if env_key:
                 clean_key = env_key.strip().strip("'\"")

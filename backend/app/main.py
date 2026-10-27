@@ -12,6 +12,7 @@ from app.api.hydrology import router as hydrology_router
 from app.api.prediction import router as prediction_router
 from app.api.resources import router as resources_router
 from app.api.risk import router as risk_router
+from app.api.incident import router as incident_router
 from app.api.routing import router as routing_router
 from app.api.shelter import router as shelter_router
 from app.api.weather import router as weather_router
@@ -80,6 +81,7 @@ app.include_router(shelter_router)
 app.include_router(emergency_facility_router)
 app.include_router(hazard_router)
 app.include_router(data_curation_router)
+app.include_router(incident_router)
 
 
 import logging

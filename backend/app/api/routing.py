@@ -82,13 +82,30 @@ def evacuation_route(request: EvacuationRouteRequest, db: Session = Depends(get_
         dest_lat, dest_lon, include_demo=settings.demo_mode
     )
 
+    # Active severe/extreme flood hazards as obstacle avoidance points
+    active_hazards = hazard_svc.get_hazards(include_demo=settings.demo_mode, include_authoritative=True)
+    all_obstacles = list(roads) if roads is not None else []
+    for h in active_hazards:
+        if h.severity in ("HIGH", "SEVERE", "EXTREME") and h.is_active:
+            if h.latitude is not None and h.longitude is not None:
+                all_obstacles.append(RoadCondition(
+                    id=900000 + (abs(hash(h.hazard_id)) % 90000),
+                    road_name=f"Hazard: {h.title[:40]}",
+                    status="FLOODED",
+                    latitude=h.latitude,
+                    longitude=h.longitude,
+                    notes=f"Active flood hazard ({h.severity}) from {h.source_name}.",
+                    last_updated=h.last_retrieved or datetime.now(timezone.utc)
+                ))
+
     route_res = build_graph_route(
         request.origin.latitude, 
         request.origin.longitude, 
         dest_lat, 
         dest_lon, 
         shelter,
-        road_conditions=roads
+        road_conditions=all_obstacles if roads is not None else None,
+        compute_alternatives=request.compute_alternatives
     )
 
     # Attach contextual hazard intersection warnings

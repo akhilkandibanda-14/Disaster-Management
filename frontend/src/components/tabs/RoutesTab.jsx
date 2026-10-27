@@ -12,7 +12,8 @@ export default function RoutesTab({
   loading,
   isRouting,
   onCalculateRoute,
-  onLocationSelect
+  onLocationSelect,
+  incidents = []
 }) {
   const [filterType, setFilterType] = useState('ALL')
 
@@ -98,7 +99,7 @@ export default function RoutesTab({
                         <strong className="kpi-val">
                           {route.route_distance_km != null 
                             ? `${route.route_distance_km.toFixed(2)} km` 
-                            : (route.distance_km != null ? `${route.distance_km.toFixed(2)} km` : '4.71 km')}
+                            : (route.distance_km != null ? `${route.distance_km.toFixed(2)} km` : 'N/A')}
                         </strong>
                       </div>
                       <div className="route-kpi">
@@ -106,7 +107,7 @@ export default function RoutesTab({
                         <strong className="kpi-val">
                           {route.estimated_duration_min != null 
                             ? `${Math.round(route.estimated_duration_min)} min` 
-                            : (route.estimated_travel_time_minutes != null ? `${Math.round(route.estimated_travel_time_minutes)} min` : '9 min')}
+                            : (route.estimated_travel_time_minutes != null ? `${Math.round(route.estimated_travel_time_minutes)} min` : 'Not estimated')}
                         </strong>
                       </div>
                       <div className="route-kpi">
@@ -123,9 +124,26 @@ export default function RoutesTab({
                       </div>
                     )}
 
+                    {route.alternatives && route.alternatives.length > 0 && (
+                      <div className="route-alternatives-box" style={{ marginTop: '12px', padding: '10px 12px', background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <strong style={{ color: '#d8b4fe', fontSize: '13px' }}>🔀 Computed Alternative Routes ({route.alternatives.length})</strong>
+                        </div>
+                        {route.alternatives.map((alt, idx) => (
+                          <div key={idx} style={{ padding: '6px 8px', background: 'rgba(0,0,0,0.2)', borderRadius: '4px', marginBottom: idx < route.alternatives.length - 1 ? '6px' : 0 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#f3e8ff' }}>Alternative #{idx + 1}</span>
+                              <span style={{ fontSize: '12px', color: '#c084fc', fontWeight: 'bold' }}>{alt.route_distance_km?.toFixed(2)} km</span>
+                            </div>
+                            <p style={{ fontSize: '11px', color: '#94a3b8', margin: '2px 0 0' }}>{alt.warning_note}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     <div className="route-safety-caveat">
                       <p>
-                        <strong>Non-Negotiable Safety Invariant:</strong> Roads without intersecting hazard polygons are designated <em>"NO KNOWN HAZARD INTERSECTS THIS LOCATION"</em>. Unmonitored roads are <strong>not guaranteed clear</strong>. Water depth and live road closures are not modelled in static street graphs.
+                        <strong>Non-Negotiable Safety Invariant:</strong> {route.safety_disclaimer || 'Roads without intersecting hazard polygons are designated "NO KNOWN HAZARD INTERSECTS THIS LOCATION". Unmonitored roads are not guaranteed clear. Water depth and live road closures are not modelled in static street graphs.'}
                       </p>
                     </div>
                   </>
@@ -213,6 +231,7 @@ export default function RoutesTab({
               loading={loading}
               onLocationSelect={onLocationSelect}
               height="580px"
+              incidents={incidents}
             />
           </div>
         </div>
