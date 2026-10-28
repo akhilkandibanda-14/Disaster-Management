@@ -18,13 +18,13 @@
 
 **Abstract**:  
 Urban flash flooding poses immediate threats to human life, critical infrastructure, and emergency logistics. Existing consumer navigation platforms frequently route evacuees through inundated roadways due to a lack of integration with hydrological models and local flood alert registries. SafeMap AI provides an end-to-end, responsible decision-support platform designed specifically for flood emergencies. The platform integrates:
-1. A curated registry of authoritative and point-in-polygon (PIP) flood hazard zones.
+1. A curated registry of authoritative active flood alerts and indicative point-in-polygon (PIP) flood hazard zones, distinctly classified to prevent confusing geographical vulnerability with active rising floodwaters.
 2. An OpenStreetMap (OSM) graph routing engine that computes hazard-aware shortest paths with dynamic detour calculations and graceful `NO_SAFE_ROUTE` fallback states.
 3. An emergency facility discovery catalog distinguishing between verified hospital listings and unverified community shelters (`PUBLIC_UNVERIFIED`).
 4. Strict algorithmic safeguards preventing uncalibrated ML extrapolation (such as the 50 km gauge boundary rule).
 5. A high-contrast, responsive user interface engineered for high-stress citizen and operational decision support.
 
-The system is validated through a suite of 311 automated backend tests across 13 development milestones and a production frontend build.
+The system is validated through a suite of 345 automated backend tests across 13 development milestones and a production frontend build.
 
 ---
 
@@ -227,26 +227,26 @@ The backend test suite is executed using `pytest` across unit, integration, spat
 ### 13.1 Cumulative Backend Test Results
 ```
 ============================== test session starts ==============================
-platform win32 -- Python 3.13.7, pytest-9.1.1, pluggy-1.6.0
-collected 311 items
+platform win32 -- Python 3.13.7, pytest-9.1.1, pluggy-1.7.0
+collected 345 items
 
-311 passed, 41 warnings in 158.59s (0:02:38)
-======================== 311 passed, 41 warnings in 158.59s =====================
+345 passed, 1256 warnings in 184.87s (0:03:04)
+======================= 345 passed, 1256 warnings in 184.87s =====================
 ```
 
 ### 13.2 Frontend Production Build
 ```
 > vite build
-✓ 59 modules transformed.
+✓ 71 modules transformed.
 dist/index.html                   0.62 kB │ gzip:   0.38 kB
-dist/assets/index-BTPi5OyM.css   27.45 kB │ gzip:   9.40 kB
-dist/assets/index-Ca2mVHSh.js   424.41 kB │ gzip: 123.62 kB
-✓ built in 248ms
+dist/assets/index-Dlj9PLqh.css   72.02 kB │ gzip:  17.00 kB
+dist/assets/index-sKicOCck.js   492.95 kB │ gzip: 143.05 kB
+✓ built in 295ms
 ```
 
 ### 13.3 Test Suite Breakdown
 - `test_routing.py`: 21 tests (Dijkstra, detours, invalid coordinates, determinism, `NO_SAFE_ROUTE`).
-- `test_flood_hazards.py`: 12 tests (PIP algorithms, 150m Haversine rule, alert boundaries).
+- `test_flood_hazards.py`: 13 tests (PIP algorithms, 150m Haversine rule, active alerts vs mapped zones distinction, alert boundaries).
 - `test_emergency_facilities.py`: 12 tests (Hospitals, shelters, facility selection, unverified labels).
 - `test_deployment_readiness_m10.py`: 25 tests (RBAC, config validation, secret redaction, path safety).
 - `test_deployment_smoke_m11.py`: 22 tests (Health probes, container config, service isolation).

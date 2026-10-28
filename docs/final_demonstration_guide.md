@@ -14,7 +14,7 @@ SafeMap AI is an AI-assisted geospatial decision-support application built to su
 This document serves as the **official demonstration protocol and audit package**, providing:
 1. A minute-by-minute **5-Minute Demonstration Script** tailored for academic evaluators, municipal observers (GHMC DRF / TG-SDMA), and technical reviewers.
 2. A **Verified Feature Checklist** documenting every tested capability and safety boundary.
-3. Actual test counts and build verification logs (**311 backend unit/integration tests passing**, **frontend production bundle verified in 329 ms**).
+3. Actual test counts and build verification logs (**345 backend unit/integration tests passing**, **frontend production bundle verified in 295 ms**).
 4. An honest disclosure of **known limitations, host constraints, and unverified assumptions**.
 
 > [!CAUTION]
@@ -30,7 +30,7 @@ This document serves as the **official demonstration protocol and audit package*
 | **1:00 – 2:00** | **System Observability & Model Safeguards** | • Show system health monitoring (`GET /health`) distinguishing process health from external feed status.<br>• Explain the **50 km INDOFLOODS gauge coverage rule**: machine learning inference is strictly restricted to calibrated basins.<br>• Demonstrate the **`MODEL_UNSUPPORTED` / `INSUFFICIENT_LOCAL_DATA`** safeguard: because central Hyderabad is 71.77 km from the nearest gauge, automated ML prediction is transparently suppressed rather than generating hallucinated risk scores. | Inspect the "FLOOD PREDICTION & DATA READINESS" card. Show the amber badge displaying `INSUFFICIENT_LOCAL_DATA`, the gauge distance note (71.77 km), and the explicit safety notice. |
 | **2:00 – 3:00** | **Interactive Flood Map & Hazard Intersection** | • Explore the interactive Leaflet map featuring OpenStreetMap tiles.<br>• Point out authoritative alert zones (red polygons) and municipal flood plains (amber polygons).<br>• Show that simulated data is clearly labeled **`[DEMO]`** (purple dashed zones).<br>• Demonstrate **point-in-polygon location hazard assessment**: selecting coordinates within a flood zone triggers a high-severity alert banner without claiming unmonitored areas are clear. | Click on flood hazard polygons to open detail popups showing data status, source, modeled discharge, and geographic uncertainty notices. Observe the live location hazard intersection banner. |
 | **3:00 – 4:00** | **Facilities & Hazard-Aware Evacuation Routing** | • Inspect the emergency facilities catalogue (GHMC community halls, shelters, and Osmania General Hospital).<br>• Highlight truth-in-facilities: hospital identity is verified, but operational emergency readiness and live bed counts are marked **`Unverified (UNKNOWN)`**.<br>• Trigger **Hazard-Aware Evacuation Routing**: calculates shortest path on real OSM street network.<br>• Demonstrate detour recalculation: when direct paths cross reported flooded segments, the engine recalculates an alternate route (**`HAZARDS_AVOIDED`**).<br>• Show the **`NO_SAFE_ROUTE`** invariant when destinations are fully cut off. | Click "Select as Destination" on a facility (e.g., Begumpet GHMC Shelter). Click "Calculate Hazard-Aware Evacuation Route". Observe the rendered blue/amber route polyline on the map and the route safety limitation disclaimer. |
-| **4:00 – 5:00** | **Operations Dashboard & Administrative Governance** | • Switch to the **Operations Dashboard** view.<br>• Showcase the historical flood events catalogue (October 2020 cloudburst, September 2016 Musi inundation).<br>• Demonstrate the **Institutional Intake Validator**: paste CSV telemetry and run schema, bounding-box, and unit harmonization checks.<br>• Highlight Role-Based Access Control (RBAC): committing data or promoting verification statuses requires authorized API keys.<br>• Conclude with project milestones: 311 passing backend tests, clean production build, and readiness for supervised pilot. | Toggle the top bar switch to "Operations". Scroll through the system telemetry cards, inspect the intake audit log, and showcase the live CSV validation interface. |
+| **4:00 – 5:00** | **Operations Dashboard & Administrative Governance** | • Switch to the **Operations Dashboard** view.<br>• Showcase the historical flood events catalogue (October 2020 cloudburst, September 2016 Musi inundation).<br>• Demonstrate the **Institutional Intake Validator**: paste CSV telemetry and run schema, bounding-box, and unit harmonization checks.<br>• Highlight Role-Based Access Control (RBAC): committing data or promoting verification statuses requires authorized API keys.<br>• Conclude with project milestones: 345 passing backend tests, clean production build, and readiness for supervised pilot. | Toggle the top bar switch to "Operations". Scroll through the system telemetry cards, inspect the intake audit log, and showcase the live CSV validation interface. |
 
 ---
 
@@ -56,9 +56,9 @@ This document serves as the **official demonstration protocol and audit package*
 ## 4. Test & Build Execution Audit
 
 ### Backend Test Suite
-- **Command**: `python -m pytest -q` (executed inside `.venv` on Python 3.11)
-- **Result**: **311 passed**, 0 failed, 1254 warnings in 169.51 seconds
-- **Warning Analysis**: All 1254 warnings represent upstream Scikit-learn/Joblib serialization deprecation notices (`InconsistentVersionWarning` due to joblib array shape updates in NumPy 2.x), none of which affect test correctness or runtime execution.
+- **Command**: `python -m pytest -q` (executed inside `.venv` on Python 3.13)
+- **Result**: **345 passed**, 0 failed, 1256 warnings in 184.87 seconds
+- **Warning Analysis**: Upstream Scikit-learn/Joblib serialization deprecation notices (`InconsistentVersionWarning` due to joblib array shape updates in NumPy 2.x), none of which affect test correctness or runtime execution.
 - **Milestone Distribution**:
   - Milestones 1–5 (Foundations, Model, OSM Graph, Routing): 185 tests
   - Milestone 6 (Data Curation & Local Readiness): 25 tests
@@ -68,16 +68,17 @@ This document serves as the **official demonstration protocol and audit package*
   - Milestone 10 (Deployment Readiness & Security Hardening): 25 tests
   - Milestone 11 (Deployment Smoke Tests & Pilot Acceptance): 22 tests
   - Milestone 12 (Deployment Verification & Controlled Rehearsal): 19 tests
-  - **Total**: **311 passing automated tests**
+  - Milestone 13 & Functional Extensions (Hazards, Incidents, Route Safety): 34 tests
+  - **Total**: **345 passing automated tests**
 
 ### Frontend Production Build
 - **Command**: `npm run build` (Vite 8.2.2 with React 19)
-- **Result**: **Clean build in 329 ms**
+- **Result**: **Clean build in 295 ms**
 - **Output Artifacts**:
   - `dist/index.html`: 0.62 kB (gzip: 0.38 kB)
-  - `dist/assets/index-BEI-jSOz.css`: 25.91 kB (gzip: 9.04 kB)
-  - `dist/assets/index-nP5-FlkD.js`: 421.00 kB (gzip: 122.46 kB)
-- **Syntax & Bundling**: 59 modules transformed with 0 warnings and 0 syntax errors.
+  - `dist/assets/index-Dlj9PLqh.css`: 72.02 kB (gzip: 17.00 kB)
+  - `dist/assets/index-sKicOCck.js`: 492.95 kB (gzip: 143.05 kB)
+- **Syntax & Bundling**: 71 modules transformed with 0 warnings and 0 syntax errors.
 
 ---
 

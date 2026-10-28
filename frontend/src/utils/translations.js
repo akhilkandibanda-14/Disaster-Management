@@ -32,7 +32,11 @@ export const translations = {
     humidity: 'Humidity',
     wind: 'Wind',
     musiRiver: 'Musi River Telemetry',
-    disclaimer: 'Research prototype. Not an emergency alert system. In an emergency, follow official authorities.'
+    disclaimer: 'Research prototype. Not an emergency alert system. In an emergency, follow official authorities.',
+    demoModeButton: 'DEMO MODE',
+    exitDemoButton: 'Exit Demo',
+    demoSimulatedEmergency: 'DEMO MODE — SIMULATED EMERGENCY',
+    demoNotice: 'Simulated flood scenario for demonstration only. Real emergency systems not contacted.'
   },
   te: {
     appTitle: 'సేఫ్‌మ్యాప్ AI హైదరాబాద్',
@@ -67,7 +71,11 @@ export const translations = {
     humidity: 'తేమ',
     wind: 'గాలి',
     musiRiver: 'మూసీ నది టెలిమెట్రీ',
-    disclaimer: 'పరిశోధనా నమూనా. అత్యవసర హెచ్చరిక వ్యవస్థ కాదు. అత్యవసర పరిస్థితుల్లో అధికారిక అధికారుల ఆదేశాలను పాటించండి.'
+    disclaimer: 'పరిశోధనా నమూనా. అత్యవసర హెచ్చరిక వ్యవస్థ కాదు. అత్యవసర పరిస్థితుల్లో అధికారిక అధికారుల ఆదేశాలను పాటించండి.',
+    demoModeButton: 'డెమో మోడ్',
+    exitDemoButton: 'డెమో నిష్క్రమణ',
+    demoSimulatedEmergency: 'డెమో మోడ్ — అనుకరణ అత్యవసర పరిస్థితి',
+    demoNotice: 'ప్రదర్శన కోసం మాత్రమే వరద అనుకరణ దృష్టాంతం. అసలు అత్యవసర వ్యవస్థలు సంప్రదించబడలేదు.'
   },
   hi: {
     appTitle: 'सेफमैप एआई हैदराबाद',
@@ -102,6 +110,10 @@ export const translations = {
     humidity: 'आर्द्रता',
     wind: 'हवा',
     musiRiver: 'मूसी नदी टेलीमेट्री',
-    disclaimer: 'अनुसंधान प्रोटोटाइप। आधिकारिक आपातकालीन चेतावनी प्रणाली नहीं है। आपात स्थिति में आधिकारिक निर्देशों का पालन करें।'
+    disclaimer: 'अनुसंधान प्रोटोटाइप। आधिकारिक आपातकालीन चेतावनी प्रणाली नहीं है। आपात स्थिति में आधिकारिक निर्देशों का पालन करें।',
+    demoModeButton: 'डेमो मोड',
+    exitDemoButton: 'डेमो से बाहर निकलें',
+    demoSimulatedEmergency: 'डेमो मोड — सिमुलेटेड आपातकाल',
+    demoNotice: 'केवल प्रदर्शन हेतु सिमुलेटेड बाढ़ परिदृश्य। वास्तविक आपातकालीन सेवाओं से संपर्क नहीं किया गया।'
   }
 }

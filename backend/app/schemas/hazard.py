@@ -184,6 +184,34 @@ class LocationHazardWarning(BaseModel):
     hazard_count: int = Field(0, description="Number of intersected hazards")
     highest_severity: str = Field("NONE", description="Highest severity among intersected hazards")
     intersected_hazards: List[HazardRecord] = Field(default_factory=list, description="List of intersecting hazards")
+    warning_classification: Literal["CONFIRMED_ACTIVE_FLOOD", "MAPPED_FLOOD_PRONE_ZONE", "NONE"] = Field(
+        default="NONE",
+        description="Explicit classification: CONFIRMED_ACTIVE_FLOOD (authoritative active alert/observation), MAPPED_FLOOD_PRONE_ZONE (indicative historical/unverified zone), or NONE"
+    )
+    has_active_confirmed_flood: bool = Field(
+        default=False,
+        description="True only if intersecting hazard is an authoritative, active, non-stale flood alert or physical observation"
+    )
+    has_mapped_flood_zone: bool = Field(
+        default=False,
+        description="True if intersecting an indicative/historical/unverified flood-prone zone without live flood confirmation"
+    )
+    headline: str = Field(
+        default="NO KNOWN HAZARD INTERSECTS THIS LOCATION",
+        description="Accurate, non-misleading alert headline"
+    )
+    explanation: str = Field(
+        default="No active flood hazards or mapped inundation zones intersect the selected coordinates.",
+        description="Detailed contextual explanation of the hazard status"
+    )
+    mapped_severity: str = Field(
+        default="NONE",
+        description="Severity level of intersecting mapped flood zones"
+    )
+    confirmed_severity: str = Field(
+        default="NONE",
+        description="Severity level of confirmed active flood events"
+    )
     spatial_rule: str = Field(
         default="Ray-casting Point-in-Polygon (PIP) for zone boundaries; 150m Haversine radius for point hazards.",
         description="Documented spatial intersection method"

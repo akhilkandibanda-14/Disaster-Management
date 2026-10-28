@@ -51,7 +51,7 @@ Evaluated under strict **Gauge-Grouped Split** (Unseen Catchments):
 | Model Architecture | Accuracy | Severe Precision | Severe Recall | Severe F1 | ROC-AUC | Brier Score |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Dummy (Majority Class)** | 0.6485 | 0.0000 | 0.0000 | 0.0000 | 0.5000 | — |
-| **Logistic Regression** | 0.5025 | 0.3544 | 0.5054 | 0.4167 | — | — |
+| **Logistic Regression** | 0.5038 | 0.3553 | 0.5054 | 0.4173 | — | — |
 | **Random Forest (Production)** | **0.6739** | **0.5450** | **0.4368** | **0.4850** | **0.6682** | **0.2113** |
 
 ### Cross-Validation Stability

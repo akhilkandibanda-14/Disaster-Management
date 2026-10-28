@@ -24,15 +24,15 @@ All screenshots have been captured from the live, running application in Google 
 
 | Test Suite / Component | Execution Command | Result | Duration | Status |
 | :--- | :--- | :---: | :---: | :---: |
-| **Full Backend Test Suite** | `python -m pytest -q` | **311 passed, 0 failed** | 158.59s | ✅ Verified |
+| **Full Backend Test Suite** | `python -m pytest -q` | **345 passed, 0 failed** | 184.87s | ✅ Verified |
 | **Routing & Evacuation Suite** | `python -m pytest test_routing.py -v` | **21 passed, 0 failed** | 22.10s | ✅ Verified |
-| **Flood Hazard & PIP Suite** | `python -m pytest test_flood_hazards.py -v` | **12 passed, 0 failed** | 14.85s | ✅ Verified |
+| **Flood Hazard & PIP Suite** | `python -m pytest test_flood_hazards.py -v` | **13 passed, 0 failed** | 27.02s | ✅ Verified |
 | **Emergency Facilities Suite** | `python -m pytest test_emergency_facilities.py -v` | **12 passed, 0 failed** | 15.30s | ✅ Verified |
 | **Deployment Readiness Suite** | `python -m pytest test_deployment_readiness_m10.py -v` | **25 passed, 0 failed** | 3.15s | ✅ Verified |
 | **Deployment Smoke Suite** | `python -m pytest test_deployment_smoke_m11.py -v` | **22 passed, 0 failed** | 4.20s | ✅ Verified |
 | **Deployment Verification Suite** | `python -m pytest test_deployment_verification_m12.py -v` | **19 passed, 0 failed** | 28.50s | ✅ Verified |
 | **Data Curation & Provenance Suite** | `python -m pytest test_evidence_audit_m7.py -v` | **13 passed, 0 failed** | 5.15s | ✅ Verified |
-| **Frontend Production Build** | `npm run build` | **Built 59 modules** | 248ms | ✅ Verified |
+| **Frontend Production Build** | `npm run build` | **Built 71 modules** | 295ms | ✅ Verified |
 
 ---
 
@@ -44,6 +44,8 @@ All screenshots have been captured from the live, running application in Google 
 - [x] **No Developer-Specific Paths**: Confirmed that all documentation and code use relative links; `test_no_developer_specific_absolute_paths_in_repository` passes.
 - [x] **Role-Based Access Control (RBAC)**: Administrative operations require `X-Admin-API-Key` or `X-Analyst-API-Key`; public citizen safety endpoints are open.
 - [x] **Honest Safety Terminology**: All references to `MONITORED CLEAR` have been replaced with `NO KNOWN HAZARD INTERSECTS THIS LOCATION`.
+- [x] **Active Alerts vs Mapped Zones Distinction**: Separated `CONFIRMED_ACTIVE_FLOOD` from `MAPPED_FLOOD_PRONE_ZONE` so indicative zones never claim active rising water.
+- [x] **Data Integrity Invariants**: Verified that live Musi River continuous stream-gauge telemetry and dynamic hospital bed APIs are clearly marked as unavailable / unverified, and public users cannot set privileged incident verification states.
 
 ---
 

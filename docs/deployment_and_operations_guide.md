@@ -441,7 +441,7 @@ Prior to conducting a supervised demonstration before municipal observers (GHMC 
 - [ ] **2. Non-Production Environment Standard**: Verified `APP_ENV=demonstration` or `APP_ENV=staging` with non-default API keys (`>= 16` characters).
 - [ ] **3. Truth-in-Data Pre-Briefing**: Observers explicitly briefed that hospital bed capacities are unverified and predictive ML is unsupported for Hyderabad.
 - [ ] **4. Road Condition Limitations**: Observers informed that evaluated routes avoid only *reported* hazards, and unmonitored municipal streets are not guaranteed clear.
-- [ ] **5. Full Regression Pass**: Confirmed that all 311 backend automated tests and frontend production build pass with zero failures.
+- [ ] **5. Full Regression Pass**: Confirmed that all 345 backend automated tests and frontend production build pass with zero failures.
 - [ ] **6. Discrepancy Protocol Ready**: Observers provided with reporting log sheets to record any road, hazard, or shelter discrepancies observed during the trial.
 
 **Supervisor Signature / Identifier:** _______________________  

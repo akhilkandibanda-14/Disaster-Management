@@ -35,6 +35,18 @@ class Settings(BaseSettings):
     )
     admin_api_key: str = "safemap-admin-dev-key"
     analyst_api_key: str = "safemap-analyst-dev-key"
+    ai_provider: str = Field(
+        default="auto",
+        validation_alias=AliasChoices("ai_provider", "AI_PROVIDER"),
+    )
+    gemini_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("gemini_api_key", "GEMINI_API_KEY"),
+    )
+    openai_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("openai_api_key", "OPENAI_API_KEY"),
+    )
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     database_pool_size: int = 5
     flood_dataset_path: str = "ml/data/flood_dataset.csv"

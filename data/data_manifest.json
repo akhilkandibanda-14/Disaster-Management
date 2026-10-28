@@ -2,8 +2,8 @@
   "manifest_version": "1.2.0",
   "project": "SafeMap AI",
   "milestone": "Milestone 8: Institutional Data Acquisition and Evidence Intake",
-  "generated_at_utc": "2026-10-27T16:03:05Z",
-  "pipeline_execution_duration_seconds": 0.016,
+  "generated_at_utc": "2026-10-27T17:31:46Z",
+  "pipeline_execution_duration_seconds": 0.08,
   "target_region": "Hyderabad Metropolitan Area, Telangana, India",
   "reference_coordinates": {
     "latitude": 17.385,
@@ -56,8 +56,8 @@
         "curated": "data/curated/hyderabad_rainfall_annual_curated.csv"
       },
       "checksums": {
-        "raw_sha256": "3b7eabc4f13dca239caa572e9d751cf1e96566f8ad8866feff49fe56934e0f25",
-        "curated_sha256": "fd06c88cb6465ed399b5a724db0e5264348abe750e2a514b2c8db5c127bb45dc"
+        "raw_sha256": "04b615e66ba036774b4a9a6537fc27e11ce70e048282d0caf16df66a1d096c01",
+        "curated_sha256": "a88b8c926bf0994375bd5f199f0293e5d622973881b73a772c1efad68cbb67fd"
       },
       "audit": {
         "records_imported": 19,
@@ -131,8 +131,8 @@
         "curated": "data/curated/bhuvan_hyd_oct2020_curated.json"
       },
       "checksums": {
-        "raw_sha256": "6052e634db303275bab3de8ebf58db554a336ab8d965657f4b7d58cd258800e3",
-        "curated_sha256": "5eeaafe26f41aeab92c027a2be48d06313e85743d0dad6ac23f995a90ea55183"
+        "raw_sha256": "7e84cb166d1cfac01f5298bdfc76b664b053894103070bf87e1616f1a01e2d20",
+        "curated_sha256": "bc2219d402c547894a69fd91eec1b1531d4c3473cf79c4b8e2dbe2269e150442"
       },
       "audit": {
         "submergence_pockets_catalogued": 7
@@ -184,9 +184,9 @@
         "curated_csv": "data/curated/hyderabad_flood_event_catalogue.csv"
       },
       "checksums": {
-        "raw_sha256": "5aaac3e9ee26d5066bb5a0de521fb204c03eede0f4fc7638a1479e73be5f0eaa",
-        "curated_json_sha256": "47fd1a9db418e32fcf15306bd1be219cde491834e55e6e739cec10c794b3d84b",
-        "curated_csv_sha256": "3644cd279c149976817458b773f8507b7d7a4b87c72ac96fc4b20576e152b175"
+        "raw_sha256": "f4b695be37d417bece37d260603bd820182291bcf638e6959d775878ff90f436",
+        "curated_json_sha256": "d42cfdf01ee2215106edd43c61caacee92c99d3664f6695f390758a0006c4220",
+        "curated_csv_sha256": "f5d522102025a3d07b6cd13801ab30920ae023bee016b8aa65a181a4e716f4d4"
       },
       "audit": {
         "records_imported": 8,
@@ -224,7 +224,7 @@
       },
       "checksums": {
         "raw_sha256": "5c456b99e6d386a7980a46ddff0feb73274cc84bafb2d887a9265e1680156ae1",
-        "curated_sha256": "3ef85ecc96e4de6548a64b92f34c798e3ee022b2b2e1fda06498c6bd653233b7"
+        "curated_sha256": "44f7d51632ba613629b91a39d180e141d55cbcc889ba5b558dbe5049e9bfda5e"
       },
       "audit": {
         "records_imported": 11,
@@ -251,8 +251,8 @@
         "curated": "data/curated/hyderabad_flood_zones_curated.geojson"
       },
       "checksums": {
-        "raw_sha256": "a5733c0b5ea769d4bc16a85beb01acb7277ca4c1ddb91fd957ab86f9f185ba2a",
-        "curated_sha256": "4a043bcdd7eb72acebd9258fadf20a195baaeea66343af483dbf6f53dc12fec0"
+        "raw_sha256": "27f3b5e9ef8ebe8bee239b166c747afb115b6fbe13f6a623250c2f586032e39a",
+        "curated_sha256": "320d90a817821807598f5c44d6bd0656fe77b82ba7e757683955673351251f00"
       },
       "audit": {
         "features_imported": 5
@@ -283,7 +283,7 @@
       },
       "checksums": {
         "raw_sha256": "21f29c2126fcea8865ba2a03b6fe5ed509712d9800dc56acee099e20ec8847eb",
-        "curated_sha256": "9d838a97f44a8b0727386c1aa83c292e2182679fba6bb13e82f497885c63a5db"
+        "curated_sha256": "f2371fc9d1acc84b68b911dc858d6abde2c607107c8a1b30a5ddf315780402b4"
       },
       "audit": {
         "daily_records_curated": 11,

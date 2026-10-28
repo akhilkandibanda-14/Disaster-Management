@@ -799,10 +799,10 @@ Automated and verified in [`backend/test_deployment_verification_m12.py`](backen
 - **Supervisor Sign-Off Checklist**: Documented in [`docs/deployment_and_operations_guide.md`](docs/deployment_and_operations_guide.md) Section 11, requiring technical supervisor verification of isolation from emergency dispatch, non-production credentials, observer pre-briefings, and discrepancy logging sheets.
 - **Docker Deployment Instructions**: Complete multi-container instructions provided for staging hosts with Docker Desktop / Docker Engine.
 
-### 4. Final Cumulative Test Suite: 311/311 Passing
+### 4. Final Cumulative Test Suite: 345/345 Passing
 - **Milestone 12 & 13 Suite**: 19 passed, 0 failed in 28.50s ([`backend/test_deployment_verification_m12.py`](backend/test_deployment_verification_m12.py))
-- **Total Backend Suite**: **311 passed**, 0 failed, 41 warnings in 158.59s (`python -m pytest -q`)
-- **Frontend Production Build**: Clean build in 248ms (`npm run build`)
+- **Total Backend Suite**: **345 passed**, 0 failed, 1256 warnings in 184.87s (`python -m pytest -q`)
+- **Frontend Production Build**: Clean build in 295ms (71 client modules) (`npm run build`)
 
 ---
 
@@ -813,7 +813,7 @@ Automated and verified in [`backend/test_deployment_verification_m12.py`](backen
 - **Five-Minute Demonstration Script**: [`docs/final_demo_script.md`](docs/final_demo_script.md) — Timed presentation protocol for evaluators.
 - **Submission & Verification Checklist**: [`docs/final_submission_checklist.md`](docs/final_submission_checklist.md) — Verified screenshot inventory, security audit, and test matrices.
 - **Deployment & Operations Guide**: [`docs/deployment_and_operations_guide.md`](docs/deployment_and_operations_guide.md) — Docker and production configuration manual.
-- **Screenshot Inventory**: [`docs/screenshots/`](docs/screenshots/) — 7 verified browser screenshots captured via Chrome CDP.
+- **Screenshot Inventory**: [`docs/screenshots/`](docs/screenshots/) — 15 verified browser screenshots captured via Chrome CDP.
 
 ### 2. Active Local URLs
 | Endpoint | Local URL | Description |

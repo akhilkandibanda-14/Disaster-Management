@@ -194,10 +194,10 @@ SafeMap AI segregates public safety access from administrative operations:
 
 #### Q28. What are your actual test results?
 **Answer**:  
-The backend test suite consists of **311 automated tests** executed with `pytest`:
-- **Result**: **311 passed, 0 failed, 41 warnings** in **158.59 seconds**.
-- Coverage spans Dijkstra routing, detour generation, `NO_SAFE_ROUTE` fallback, Ray-casting PIP checks, emergency facility filtering, RBAC authentication, secret redaction, and curation idempotency.
-- The frontend production bundle compiles cleanly with Vite in **248 milliseconds** (59 transformed modules).
+The backend test suite consists of **345 automated tests** executed with `pytest`:
+- **Result**: **345 passed, 0 failed, 1256 warnings** in **184.87 seconds**.
+- Coverage spans Dijkstra routing, detour generation, `NO_SAFE_ROUTE` fallback, Ray-casting PIP checks, active alerts vs. mapped hazard classification, emergency facility filtering, RBAC authentication, secret redaction, and curation idempotency.
+- The frontend production bundle compiles cleanly with Vite in **295 milliseconds** (71 transformed modules).
 
 #### Q29. Is Docker deployed, and what are the deployment requirements?
 **Answer**:  

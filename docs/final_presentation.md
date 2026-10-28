@@ -191,19 +191,19 @@
 ### Comprehensive Automated Test Verification
 
 - **Backend Test Suite Results**:
-  - Total Tests: **311 passed**, 0 failed, 41 warnings.
-  - Execution Duration: **158.59 seconds** (0:02:38).
-  - Test Categories: Routing logic (21), flood hazard PIP (12), emergency facilities (12), deployment smoke (22), verification & CORS (19), data curation idempotency (25), and model boundary checks (175+).
+  - Total Tests: **345 passed**, 0 failed, 1256 warnings.
+  - Execution Duration: **184.87 seconds** (0:03:04).
+  - Test Categories: Routing logic (21), flood hazard PIP & active/mapped alert distinction (13), emergency facilities (12), deployment smoke (22), verification & CORS (19), data curation idempotency (25), and model boundary checks (175+).
 - **Frontend Production Build**:
-  - Transformed 59 client modules into optimized bundle in **248 milliseconds** via Vite.
+  - Transformed 71 client modules into optimized bundle in **295 milliseconds** via Vite.
 - **Spatial Optimization**:
   - Replaced repetitive GeoDataFrame allocations with cached `cKDTree`, reducing nearest-node query time to $< 1$ millisecond and eliminating memory bottlenecks.
 
 **Suggested Visual**:
-- Table and terminal capture excerpt showing the `311 passed in 158.59s` summary and the `npm run build` output.
+- Table and terminal capture excerpt showing the `345 passed in 184.87s` summary and the `npm run build` output.
 
 **Speaker Notes**:
-> *"Our implementation has been rigorously validated. The backend test suite contains 311 automated tests, all of which pass cleanly in 158 seconds. These tests cover spatial intersection, Dijkstra routing, detour generation, RBAC security, and pipeline idempotency. The frontend production build compiles in 248 milliseconds. By caching KDTree spatial indexes, we achieved sub-millisecond node snapping on a 100,000-node graph."*
+> *"Our implementation has been rigorously validated. The backend test suite contains 345 automated tests, all of which pass cleanly in 184 seconds. These tests cover spatial intersection, Dijkstra routing, detour generation, RBAC security, active vs mapped alert classification, and pipeline idempotency. The frontend production build compiles in 295 milliseconds. By caching KDTree spatial indexes, we achieved sub-millisecond node snapping on a 100,000-node graph."*
 
 ---
 

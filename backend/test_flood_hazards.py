@@ -188,6 +188,13 @@ def test_location_warning_inside_hazard_polygon():
     assert data["hazard_count"] >= 1
     assert data["highest_severity"] in ("HIGH", "SEVERE", "EXTREME", "MODERATE")
     
+    # Mapped static flood zones must NOT claim active flooding is occurring now
+    assert data["warning_classification"] == "MAPPED_FLOOD_PRONE_ZONE"
+    assert data["has_mapped_flood_zone"] is True
+    assert data["has_active_confirmed_flood"] is False
+    assert data["headline"].startswith("MAPPED FLOOD-PRONE ZONE INTERSECTS SELECTED LOCATION")
+    assert "vulnerability" in data["explanation"].lower() or "indicative" in data["explanation"].lower()
+    
     hazard_ids = [h["hazard_id"] for h in data["intersected_hazards"]]
     assert any("HYD-FZ" in hid for hid in hazard_ids)
 
@@ -201,6 +208,39 @@ def test_location_warning_outside_hazard_polygon():
     assert data["is_in_hazard_zone"] is False
     assert data["hazard_count"] == 0
     assert data["highest_severity"] == "NONE"
+    assert data["warning_classification"] == "NONE"
+    assert data["has_active_confirmed_flood"] is False
+    assert data["has_mapped_flood_zone"] is False
+    assert data["headline"] == "NO KNOWN HAZARD INTERSECTS THIS LOCATION"
+
+
+def test_location_warning_distinguishes_authoritative_vs_mapped_zone():
+    """Verify that authoritative active flood alerts trigger CONFIRMED_ACTIVE_FLOOD, not MAPPED_FLOOD_PRONE_ZONE."""
+    from app.services.hazard import get_hazard_service
+    srv = get_hazard_service()
+    
+    auth_alert = HazardRecord(
+        hazard_id="AUTH-FLOOD-TEST-001",
+        hazard_type="RIVER_OVERFLOW",
+        title="Musi River Overflows Banks",
+        description="High discharge leading to central bridge submergence",
+        severity="HIGH",
+        latitude=17.383,
+        longitude=78.490,
+        source_name="NDMA SACHET",
+        source_type="OFFICIAL_ALERT",
+        data_status="AUTHORITATIVE",
+        is_active=True,
+        is_stale=False,
+        last_retrieved=datetime.now(timezone.utc),
+        verification_note="Live official warning."
+    )
+    with patch.object(srv, "get_hazards", return_value=[auth_alert]):
+        result = srv.check_location(latitude=17.383, longitude=78.490)
+        assert result.warning_classification == "CONFIRMED_ACTIVE_FLOOD"
+        assert result.has_active_confirmed_flood is True
+        assert "ACTIVE FLOOD HAZARD AT SELECTED LOCATION" in result.headline
+        assert result.confirmed_severity == "HIGH"
 
 
 def test_missing_hazard_data_never_implies_safety():

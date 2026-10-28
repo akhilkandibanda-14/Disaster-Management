@@ -16,6 +16,7 @@ from app.api.incident import router as incident_router
 from app.api.routing import router as routing_router
 from app.api.shelter import router as shelter_router
 from app.api.weather import router as weather_router
+from app.api.assistant import router as assistant_router
 from app.config import settings
 from app.services.road_network import road_network_service
 
@@ -82,6 +83,7 @@ app.include_router(emergency_facility_router)
 app.include_router(hazard_router)
 app.include_router(data_curation_router)
 app.include_router(incident_router)
+app.include_router(assistant_router)
 
 
 import logging

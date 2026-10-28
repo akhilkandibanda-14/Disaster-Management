@@ -661,7 +661,23 @@ class HazardService:
             if hit:
                 intersected.append(h)
 
-        # Determine highest severity
+        # Separate authoritative active flood alerts from mapped/historical/demo flood zones
+        confirmed_active_hazards = [
+            h for h in intersected 
+            if h.data_status == "AUTHORITATIVE" 
+            and h.source_type in ("OFFICIAL_ALERT", "OBSERVATION") 
+            and h.is_active 
+            and not h.is_stale
+        ]
+        mapped_flood_zones = [
+            h for h in intersected
+            if h not in confirmed_active_hazards
+        ]
+
+        has_active_confirmed = len(confirmed_active_hazards) > 0
+        has_mapped_zone = len(mapped_flood_zones) > 0
+
+        # Calculate severities
         highest_sev = "NONE"
         highest_val = -1
         for h in intersected:
@@ -670,11 +686,57 @@ class HazardService:
                 highest_val = val
                 highest_sev = h.severity
 
+        confirmed_sev = "NONE"
+        c_val = -1
+        for h in confirmed_active_hazards:
+            val = SEVERITY_ORDER.get(h.severity, 0)
+            if val > c_val:
+                c_val = val
+                confirmed_sev = h.severity
+
+        mapped_sev = "NONE"
+        m_val = -1
+        for h in mapped_flood_zones:
+            val = SEVERITY_ORDER.get(h.severity, 0)
+            if val > m_val:
+                m_val = val
+                mapped_sev = h.severity
+
+        if has_active_confirmed:
+            warning_classification = "CONFIRMED_ACTIVE_FLOOD"
+            headline = f"ACTIVE FLOOD HAZARD AT SELECTED LOCATION ({confirmed_sev} SEVERITY)"
+            explanation = (
+                "Authoritative emergency alerts confirm active flooding or imminent flood conditions at the selected coordinates. "
+                "Immediate precautionary action may be warranted."
+            )
+        elif has_mapped_zone:
+            warning_classification = "MAPPED_FLOOD_PRONE_ZONE"
+            headline = f"MAPPED FLOOD-PRONE ZONE INTERSECTS SELECTED LOCATION ({mapped_sev} MAPPED SEVERITY)"
+            explanation = (
+                "The selected coordinates fall within an indicative municipal flood-risk polygon or historically surveyed inundation corridor. "
+                "This indicates geographical flood vulnerability, not confirmation of active rising floodwater. "
+                "However, lack of active sensor confirmation does not guarantee safety."
+            )
+        else:
+            warning_classification = "NONE"
+            headline = "NO KNOWN HAZARD INTERSECTS THIS LOCATION"
+            explanation = (
+                "No authoritative active flood alerts or mapped flood-prone zones intersect the selected coordinates. "
+                "Note that unmonitored local streets or drainage blocks may still experience unrecorded waterlogging."
+            )
+
         return LocationHazardWarning(
             is_in_hazard_zone=len(intersected) > 0,
             hazard_count=len(intersected),
             highest_severity=highest_sev,
             intersected_hazards=intersected,
+            warning_classification=warning_classification,
+            has_active_confirmed_flood=has_active_confirmed,
+            has_mapped_flood_zone=has_mapped_zone,
+            headline=headline,
+            explanation=explanation,
+            mapped_severity=mapped_sev,
+            confirmed_severity=confirmed_sev,
             spatial_rule="Ray-casting Point-in-Polygon (PIP) for zone boundaries; 150m Haversine radius for point hazards.",
             disclaimer="Absence of an alert does NOT guarantee that the area is safe. Urban flash floods, blocked drains, and unmonitored sectors may pose extreme danger without recorded alerts. Always obey official civil defense directives."
         )
