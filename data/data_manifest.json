@@ -2,8 +2,8 @@
   "manifest_version": "1.2.0",
   "project": "SafeMap AI",
   "milestone": "Milestone 8: Institutional Data Acquisition and Evidence Intake",
-  "generated_at_utc": "2026-11-01T16:36:59Z",
-  "pipeline_execution_duration_seconds": 0.018,
+  "generated_at_utc": "2026-11-01T17:07:54Z",
+  "pipeline_execution_duration_seconds": 0.007,
   "target_region": "Hyderabad Metropolitan Area, Telangana, India",
   "reference_coordinates": {
     "latitude": 17.385,
@@ -132,7 +132,7 @@
       },
       "checksums": {
         "raw_sha256": "6052e634db303275bab3de8ebf58db554a336ab8d965657f4b7d58cd258800e3",
-        "curated_sha256": "61c1b2fb768eb6169ff3a498422ee0ea582807a95c2fd050023a74b1f8b101ab"
+        "curated_sha256": "41a8ce3492edaf6a523432104a078403c8cdb7dc22a33de4c1f6e3a2156dd5fb"
       },
       "audit": {
         "submergence_pockets_catalogued": 7
@@ -185,8 +185,8 @@
       },
       "checksums": {
         "raw_sha256": "5aaac3e9ee26d5066bb5a0de521fb204c03eede0f4fc7638a1479e73be5f0eaa",
-        "curated_json_sha256": "1007954f5384d6bac1f42ab16be21647a1ee30c62e6e6d2c6c21dbef650672c8",
-        "curated_csv_sha256": "f4765b3fd758839ca33272bd104688f96a78f6bef05d042360549c426cb2cf4f"
+        "curated_json_sha256": "5b324768244ef10ee82a6feb15674abfb137de4cab139fce334be683c2b3d47e",
+        "curated_csv_sha256": "202f1c1e4a8a6a4ff55587f436f4d35eb100e51789a84e581a5dbbead6b5d878"
       },
       "audit": {
         "records_imported": 8,
@@ -224,7 +224,7 @@
       },
       "checksums": {
         "raw_sha256": "5c456b99e6d386a7980a46ddff0feb73274cc84bafb2d887a9265e1680156ae1",
-        "curated_sha256": "6b6248cb5cc4a27b4b6712c2d3180df21c103628e3771653057d7f5e276a1691"
+        "curated_sha256": "c994249d9581c10f40dd92fe2040012add10b21a9a3d836446bbd68ba915b2c0"
       },
       "audit": {
         "records_imported": 11,
@@ -252,7 +252,7 @@
       },
       "checksums": {
         "raw_sha256": "a5733c0b5ea769d4bc16a85beb01acb7277ca4c1ddb91fd957ab86f9f185ba2a",
-        "curated_sha256": "bf80be87b658aba20c6a797f318d5f1bc1da96584deb2c3a8aeec074d71ca84b"
+        "curated_sha256": "4d882f0ff3cbcf8b71b915ae4cf311ce7d0b2706cbbcb3c3184713feaf73deba"
       },
       "audit": {
         "features_imported": 5
@@ -283,7 +283,7 @@
       },
       "checksums": {
         "raw_sha256": "21f29c2126fcea8865ba2a03b6fe5ed509712d9800dc56acee099e20ec8847eb",
-        "curated_sha256": "5aa8a7e9c469e7ac9deaf9588b0946923f983f3c67404d11af59875729ce5d75"
+        "curated_sha256": "710492b8a55d495e4d3d4f776d2e21297fa6630ad773f6fa1e90bbfee5b9e559"
       },
       "audit": {
         "daily_records_curated": 11,

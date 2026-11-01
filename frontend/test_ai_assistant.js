@@ -17,47 +17,43 @@ test('Frontend AI Safety Assistant Audit', async (t) => {
     assert.match(appContent, /location=\{location\}/, 'Must pass location prop')
     assert.match(appContent, /hazardWarning=\{hazardWarning\}/, 'Must pass hazardWarning prop')
     assert.match(appContent, /route=\{route\}/, 'Must pass route prop')
-    assert.match(appContent, /isSevereWeather=\{isSevereWeather\}/, 'Must pass isSevereWeather prop')
-    assert.match(appContent, /isDemoMode=\{isDemoMode\}/, 'Must pass isDemoMode prop')
-    assert.match(appContent, /selectedFacility=\{selectedFacility\}/, 'Must pass selectedFacility prop')
+    assert.match(appContent, /shelters=\{shelters\}/, 'Must pass shelter records')
+    assert.match(appContent, /riskData=\{riskData\}/, 'Must pass risk data')
+    assert.match(appContent, /weather=\{weather\}/, 'Must pass weather data')
     assert.match(appContent, /language=\{language\}/, 'Must pass language prop')
-    assert.match(appContent, /apiBaseUrl=\{apiBaseUrl\}/, 'Must pass apiBaseUrl prop')
-    assert.match(appContent, /onNavigateToTab=\{setActiveTab\}/, 'Must pass onNavigateToTab prop')
   })
 
-  await t.test('2. Real HTTP communication with backend /assistant/query', () => {
-    assert.match(assistantContent, /\$\{apiBaseUrl\}\/assistant\/query/, 'Must POST to ${apiBaseUrl}/assistant/query')
-    assert.match(assistantContent, /method:\s*['"]POST['"]/, 'Must use POST method')
-    assert.match(assistantContent, /AbortController/, 'Must enforce AbortController request timeout')
-    assert.match(assistantContent, /setTimeout\(\(\)\s*=>\s*controller\.abort\(\),\s*8000\)/, 'Timeout must be 8 seconds')
+  await t.test('2. Guidance is local and does not send dashboard data to an AI endpoint', () => {
+    assert.match(assistantContent, /const answer = \(query\)/, 'Assistant must use the local grounded answer function')
+    assert.doesNotMatch(assistantContent, /fetch\(/, 'Assistant must not send data to an external AI endpoint')
+    assert.match(assistantContent, /No external AI/, 'UI must disclose that no external AI is used')
   })
 
-  await t.test('3. Immediate danger alert banner and emergency phone dials', () => {
-    assert.match(assistantContent, /ai-danger-alert-box/, 'Must render ai-danger-alert-box on emergency')
-    assert.match(assistantContent, /CRITICAL SAFETY ALERT/, 'Must flag critical safety alert')
-    assert.match(assistantContent, /window\.open\(['"]tel:112['"]/, 'Must support direct 112 dialing')
-    assert.match(assistantContent, /window\.open\(['"]tel:04021111111['"]/, 'Must support direct GHMC DRF dialing')
-    assert.match(stylesContent, /\.ai-danger-alert-box\s*\{/, 'styles.css must style ai-danger-alert-box')
+  await t.test('3. Emergency guidance keeps official contact links visible', () => {
+    assert.match(assistantContent, /href=\{contact\.href\}/, 'Emergency contacts must be rendered as links')
+    assert.match(assistantContent, /href: ['"]tel:112['"]/, 'Must provide direct 112 dialing')
+    assert.match(assistantContent, /href: ['"]tel:108['"]/, 'Must provide ambulance dialing')
+    assert.match(assistantContent, /href: ['"]tel:04021111111['"]/, 'Must provide GHMC DRF dialing')
+    assert.match(assistantContent, /call 112/i, 'Emergency copy must direct users to 112')
   })
 
-  await t.test('4. Loading indicators, error messages, and retry behavior', () => {
-    assert.match(assistantContent, /ai-loading-dots/, 'Must have animated loading dots')
-    assert.match(assistantContent, /ai-chat-error-bar/, 'Must have error notification bar')
-    assert.match(assistantContent, /retry-btn/, 'Must have retry button')
-    assert.match(assistantContent, /sendQuery\(lastQuery\)/, 'Retry button must re-trigger lastQuery')
-    assert.match(stylesContent, /\.ai-loading-dots\s*\{/, 'styles.css must style ai-loading-dots')
+  await t.test('4. Guidance includes route and shelter safety limitations', () => {
+    assert.match(assistantContent, /not a guarantee that a road is open or flood-free/i)
+    assert.match(assistantContent, /may be unverified for live capacity or structural safety/i)
+    assert.match(stylesContent, /\.ai-message-source\s*\{/, 'Source and limitation labels must be styled')
   })
 
   await t.test('5. Multilingual suggested flood questions (en, te, hi)', () => {
-    assert.match(assistantContent, /I am near the Musi River and water is rising/, 'English Musi River question must exist')
-    assert.match(assistantContent, /మూసీ నది వద్ద నీరు పెరుగుతుంది/, 'Telugu Musi River question must exist')
-    assert.match(assistantContent, /मूसी नदी के पास जलस्तर बढ़ रहा है/, 'Hindi Musi River question must exist')
-    assert.match(assistantContent, /NO_SAFE_ROUTE/, 'NO_SAFE_ROUTE question must exist in suggestions')
+    for (const language of ['en', 'te', 'hi']) {
+      assert.match(assistantContent, new RegExp(`${language}:\\s*\\{`), `${language} copy must exist`)
+    }
+    assert.match(assistantContent, /quickQuestions:/, 'Each language must provide safe quick questions')
+    assert.match(assistantContent, /emergency|safety/i, 'Quick guidance must include emergency or safety wording')
   })
 
   await t.test('6. Input validation and character count constraints', () => {
-    assert.match(assistantContent, /disabled=\{!userQuery\.trim\(\)\s*\|\|\s*isLoading\}/, 'Send button must be disabled for empty or in-flight query')
-    assert.match(assistantContent, /maxLength=\{1200\}/, 'Input must constrain max length to prevent huge payloads')
+    assert.match(assistantContent, /if \(!cleanQuery\) return/, 'Blank questions must be ignored')
+    assert.match(assistantContent, /disabled=\{!userQuery\.trim\(\)\}/, 'Send button must be disabled for empty input')
   })
 
   await t.test('7. Real emergency safety protections (no accidental SOS or geolocation prompt)', () => {

@@ -11,51 +11,16 @@ import AboutTab from './components/tabs/AboutTab'
 import IncidentsTab from './components/tabs/IncidentsTab'
 import OperationsDashboard from './components/OperationsDashboard'
 import { translations } from './utils/translations'
+import {
+  beginLatestRequest,
+  invalidateLatestRequest,
+  isLatestRequest,
+} from './utils/evacuationFlow'
+import useEvacuationRoute from './utils/useEvacuationRoute'
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000'
 const hyderabadLocation = { latitude: 17.385, longitude: 78.4867 }
 const isInHyderabad = ({ latitude, longitude }) => latitude >= 17.2 && latitude <= 17.6 && longitude >= 78.2 && longitude <= 78.7
-const ROUTE_ENDPOINT_TOLERANCE = 0.001
-
-const isCloseCoordinate = (actual, expected) => (
-  Array.isArray(actual) &&
-  actual.length === 2 &&
-  Number.isFinite(actual[0]) &&
-  Number.isFinite(actual[1]) &&
-  Math.abs(actual[0] - expected.longitude) <= ROUTE_ENDPOINT_TOLERANCE &&
-  Math.abs(actual[1] - expected.latitude) <= ROUTE_ENDPOINT_TOLERANCE
-)
-
-const validateRouteResponse = (data, origin, destination, facilityId) => {
-  if (!data || typeof data !== 'object') {
-    throw new Error('Routing service returned an invalid response.')
-  }
-  if (facilityId && data.facility_id && String(data.facility_id) !== String(facilityId)) {
-    throw new Error('Routing service returned a route for a different destination.')
-  }
-
-  if (data.route_status === 'NO_SAFE_ROUTE') {
-    if (!Array.isArray(data.geometry) || data.geometry.length !== 0) {
-      throw new Error('Routing service returned an invalid no-route geometry.')
-    }
-    return data
-  }
-
-  if (data.route_status !== 'ROUTE_AVAILABLE') {
-    throw new Error(data.warnings?.[0] || 'No usable route is available for this destination.')
-  }
-  if (!Array.isArray(data.geometry) || data.geometry.length < 2) {
-    throw new Error('Routing service returned an empty route geometry.')
-  }
-  if (
-    !isCloseCoordinate(data.geometry[0], origin) ||
-    !isCloseCoordinate(data.geometry[data.geometry.length - 1], destination)
-  ) {
-    throw new Error('Routing service returned a route for different coordinates.')
-  }
-  return data
-}
-
 const dashboardResourceNames = [
   'weather', 'risk', 'recommendation', 'shelters', 'facilities', 'alerts',
   'roads', 'gauges', 'hydrology', 'hazards', 'locationWarning', 'incidents'
@@ -82,7 +47,6 @@ export default function App() {
   const [recommendationResponse, setRecommendationResponse] = useState(null)
   const [facilities, setFacilities] = useState([])
   const [selectedFacility, setSelectedFacility] = useState(null)
-  const [route, setRoute] = useState(null)
   const [alerts, setAlerts] = useState([])
   const [shelters, setShelters] = useState([])
   const [roads, setRoads] = useState([])
@@ -92,12 +56,10 @@ export default function App() {
   const [hazardWarning, setHazardWarning] = useState(null)
   const [incidents, setIncidents] = useState([])
   const [loading, setLoading] = useState(true)
-  const [isRouting, setIsRouting] = useState(false)
   const [error, setError] = useState('')
   const [dashboardStatus, setDashboardStatus] = useState(initialDashboardStatus)
   const hasManualLocationSelection = useRef(false)
   const dashboardRequestRef = useRef({ id: 0, controller: null })
-  const routeRequestRef = useRef({ id: 0, controller: null })
   const isMountedRef = useRef(true)
 
   const t = translations[language] || translations.en
@@ -111,11 +73,14 @@ export default function App() {
     return response.json()
   }
 
+  const { route, isRouting, calculateRouteForFacility, cancelRoute } = useEvacuationRoute({
+    location,
+    request,
+    onError: setError
+  })
+
   const loadDashboard = async (currentLocation) => {
-    const requestId = dashboardRequestRef.current.id + 1
-    dashboardRequestRef.current.controller?.abort()
-    const controller = new AbortController()
-    dashboardRequestRef.current = { id: requestId, controller }
+    const { id: requestId, controller } = beginLatestRequest(dashboardRequestRef.current)
 
     setLoading(true)
     setError('')
@@ -144,9 +109,7 @@ export default function App() {
     // Global feeds remain visible while refreshing and are marked via dashboardStatus.
     setHydrology(null)
     setHazardWarning(null)
-    setRoute(null)
-    routeRequestRef.current.controller?.abort()
-    routeRequestRef.current = { id: routeRequestRef.current.id + 1, controller: null }
+    cancelRoute()
     const query = `latitude=${currentLocation.latitude}&longitude=${currentLocation.longitude}`
     const recQuery = `${query}&radius_km=15.0&top_n=5`
 
@@ -171,7 +134,7 @@ export default function App() {
         requestResource('incidents', '/incidents')
       ])
 
-      if (!isMountedRef.current || dashboardRequestRef.current.id !== requestId) return
+      if (!isMountedRef.current || !isLatestRequest(dashboardRequestRef.current, requestId)) return
 
       const resources = Object.fromEntries(results.map(result => [result.name, result]))
       const nextStatus = Object.fromEntries(
@@ -228,7 +191,7 @@ export default function App() {
       const incidentList = resources.incidents.status === 'available' ? resources.incidents.data : null
       if (resources.incidents.status === 'available') setIncidents(incidentList?.incidents || [])
     } catch (loadError) {
-      if (!isMountedRef.current || dashboardRequestRef.current.id !== requestId) return
+      if (!isMountedRef.current || !isLatestRequest(dashboardRequestRef.current, requestId)) return
       setApiStatus('API Unavailable')
       setError(loadError.message)
       setDashboardStatus(dashboardResourceNames.reduce((status, name) => {
@@ -236,7 +199,7 @@ export default function App() {
         return status
       }, {}))
     } finally {
-      if (isMountedRef.current && dashboardRequestRef.current.id === requestId) {
+      if (isMountedRef.current && isLatestRequest(dashboardRequestRef.current, requestId)) {
         setLoading(false)
       }
     }
@@ -248,10 +211,7 @@ export default function App() {
     refreshLocation()
     return () => {
       isMountedRef.current = false
-      dashboardRequestRef.current.id += 1
-      dashboardRequestRef.current.controller?.abort()
-      routeRequestRef.current.controller?.abort()
-      routeRequestRef.current = { id: routeRequestRef.current.id + 1, controller: null }
+      invalidateLatestRequest(dashboardRequestRef.current)
     }
   }, [])
 
@@ -259,74 +219,19 @@ export default function App() {
     hasManualLocationSelection.current = true
     setLocation(newLocation)
     setLocationStatus('Selected coordinates active')
-    routeRequestRef.current.controller?.abort()
-    routeRequestRef.current = { id: routeRequestRef.current.id + 1, controller: null }
-    setRoute(null)
-    setIsRouting(false)
+    cancelRoute()
     loadDashboard(newLocation)
   }
 
   const handleFacilitySelect = (facility) => {
-    routeRequestRef.current.controller?.abort()
-    routeRequestRef.current = { id: routeRequestRef.current.id + 1, controller: null }
+    cancelRoute()
     setSelectedFacility(facility)
-    setRoute(null)
   }
 
   const handlePlanRouteToFacility = (facility) => {
     setSelectedFacility(facility)
     setActiveTab('routes')
     calculateRouteForFacility(facility)
-  }
-
-  const calculateRouteForFacility = async (fac = selectedFacility) => {
-    if (!fac) return
-    routeRequestRef.current.controller?.abort()
-    const routeRequestId = routeRequestRef.current.id + 1
-    const controller = new AbortController()
-    routeRequestRef.current = { id: routeRequestId, controller }
-    const routeLocation = location
-    setIsRouting(true)
-    setRoute(null)
-    setError('')
-    try {
-      const destLat = fac.latitude
-      const destLon = fac.longitude
-      if (destLat == null || destLon == null) {
-        throw new Error('Selected facility has no usable coordinates.')
-      }
-      const facId = fac.facility_id || fac.id || fac.shelter_id
-      
-      const payload = { 
-        origin: { latitude: routeLocation.latitude, longitude: routeLocation.longitude },
-        destination: { latitude: destLat, longitude: destLon },
-        compute_alternatives: false
-      }
-
-      if (facId) {
-        payload.facility_id = String(facId)
-      }
-      
-      const data = await request('/evacuation-route', { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify(payload),
-        signal: controller.signal
-      })
-      const validatedData = validateRouteResponse(data, routeLocation, { latitude: destLat, longitude: destLon }, facId)
-      if (isMountedRef.current && routeRequestRef.current.id === routeRequestId) {
-        setRoute(validatedData)
-      }
-    } catch (routeError) {
-      if (routeError.name === 'AbortError') return
-      if (isMountedRef.current && routeRequestRef.current.id === routeRequestId) {
-        setError(routeError.message)
-      }
-    } finally {
-      if (isMountedRef.current && routeRequestRef.current.id === routeRequestId) {
-        setIsRouting(false)
-      }
-    }
   }
 
   const openExternalNavigation = (facility = selectedFacility) => {
