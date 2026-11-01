@@ -5,7 +5,7 @@ import joblib
 
 from app.services.gauge_reference import GaugeReferenceService
 from app.services.rainfall import calculate_antecedent_rainfall
-from app.services.prediction import load_model
+from app.services.prediction import get_feature_schema, load_model
 
 class ValidationError(Exception):
     pass
@@ -15,9 +15,8 @@ class IntegrationService:
         self.gauge_service = GaugeReferenceService(data_dir=data_dir)
         self.pipeline = load_model()
         
-        # Get raw feature names (114 numeric + 4 categorical = 118)
-        self.num_cols = list(self.pipeline.named_steps['preprocessor'].transformers_[0][2])
-        self.cat_cols = list(self.pipeline.named_steps['preprocessor'].transformers_[1][2])
+        # Use the fitted artifact schema: 118 raw features (114 numeric + 4 categorical).
+        self.num_cols, self.cat_cols, _ = get_feature_schema(self.pipeline)
         self.expected_features = set(self.num_cols + self.cat_cols)
 
     def build_feature_vector(self, latitude: float, longitude: float, target_date: date, max_dist_km: float = 50.0) -> Dict[str, Any]:

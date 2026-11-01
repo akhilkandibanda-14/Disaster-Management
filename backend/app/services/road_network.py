@@ -133,8 +133,22 @@ class RoadNetworkService:
     def find_nearest_node(self, latitude: float, longitude: float) -> dict:
         self.load_graph()
         
-        if not (-90 <= latitude <= 90) or not (-180 <= longitude <= 180):
-            raise ValueError("Invalid latitude or longitude.")
+        try:
+            latitude = float(latitude)
+            longitude = float(longitude)
+        except (TypeError, ValueError):
+            raise ValueError(
+                "Invalid latitude or longitude: values must be finite and within valid coordinate bounds."
+            )
+        if (
+            not math.isfinite(latitude)
+            or not math.isfinite(longitude)
+            or not (-90 <= latitude <= 90)
+            or not (-180 <= longitude <= 180)
+        ):
+            raise ValueError(
+                "Invalid latitude or longitude: values must be finite and within valid coordinate bounds."
+            )
         
         if self._kdtree is not None and self._node_ids is not None:
             _, idx = self._kdtree.query([longitude, latitude])

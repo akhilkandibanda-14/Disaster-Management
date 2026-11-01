@@ -36,6 +36,7 @@ from app.services.route_safety import (
     validate_route_continuity,
 )
 from app.services.routing import build_graph_route
+import app.services.routing as routing_service
 from app.services.road_network import road_network_service
 
 
@@ -353,3 +354,26 @@ def test_empty_hazard_feeds_and_disclaimer(synthetic_road_network):
     assert res.safety_disclaimer == MANDATORY_SAFETY_DISCLAIMER
     assert any("OpenStreetMap" in s for s in res.data_sources_used)
     assert res.validation_level == "GEOMETRY_INTERSECTION_VALIDATED"
+
+
+def test_non_finite_coordinates_are_rejected_before_routing():
+    assert build_graph_route(float("nan"), 78.4, 17.4, 78.43).route_status == "INVALID_ORIGIN"
+    assert build_graph_route(17.4, 78.4, 17.4, float("inf")).route_status == "INVALID_DESTINATION"
+
+
+def test_invalid_computed_geometry_is_not_returned(synthetic_road_network, monkeypatch):
+    road_network_service.set_graph_for_testing(synthetic_road_network)
+    monkeypatch.setattr(routing_service, "_validate_route_geometry", lambda *args: False)
+
+    result = build_graph_route(17.4, 78.4, 17.4, 78.43, hazards=[])
+
+    assert result.route_status == "ROUTE_UNAVAILABLE"
+    assert result.geometry == []
+
+
+def test_computed_route_is_explicitly_not_safety_verified(synthetic_road_network):
+    road_network_service.set_graph_for_testing(synthetic_road_network)
+
+    result = build_graph_route(17.4, 78.4, 17.4, 78.43, hazards=[])
+
+    assert any("not verified safe" in warning for warning in result.warnings)

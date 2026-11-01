@@ -15,7 +15,8 @@ export default function RoutesTab({
   onOpenNavigation,
   onMyLocation,
   onLocationSelect,
-  incidents = []
+  incidents = [],
+  dashboardStatus = {}
 }) {
   const [filterType, setFilterType] = useState('ALL')
 
@@ -35,6 +36,13 @@ export default function RoutesTab({
           <div className="card-panel">
             <h2 className="panel-title">Evacuation Route Console</h2>
             <p className="panel-subtitle">Dijkstra shortest path calculated over OpenStreetMap Hyderabad network</p>
+            {(dashboardStatus.roads === 'refreshing' || dashboardStatus.roads === 'unavailable') && (
+              <p className="panel-subtitle">
+                {dashboardStatus.roads === 'refreshing'
+                  ? 'Road-condition feed refreshing; retained records are not current.'
+                  : 'Road-condition feed unavailable; retained records may be stale.'}
+              </p>
+            )}
             <button
               type="button"
               className="btn-text-small"
@@ -83,7 +91,7 @@ export default function RoutesTab({
               {isRouting ? (
                 <>
                   <span className="spinner" aria-hidden="true" />
-                  <span>Calculating Safe Trajectory...</span>
+                  <span>Calculating mapped route...</span>
                 </>
               ) : (
                 <>Plan Route on OSM Network</>
@@ -96,7 +104,7 @@ export default function RoutesTab({
               disabled={!selectedFacility}
             >
               <span aria-hidden="true">🧭</span>
-              Open turn-by-turn navigation in Google Maps
+              Open external directions (not flood-verified)
             </button>
 
             {/* Route Calculation Result */}
@@ -132,7 +140,11 @@ export default function RoutesTab({
                       <div className="route-kpi">
                         <span className="kpi-label">ROAD CONDITION</span>
                         <strong className={`kpi-val ${isDetour ? 'warning-text' : ''}`}>
-                          {isDetour ? 'HAZARDS AVOIDED' : (route.road_condition_status || 'Passable')}
+                          {isDetour
+                            ? 'HAZARDS AVOIDED (COMPUTED)'
+                            : route.road_condition_status === 'CLEAR'
+                              ? 'CURRENT STATUS NOT VERIFIED'
+                              : (route.road_condition_status || 'Not reported')}
                         </strong>
                       </div>
                     </div>
@@ -142,6 +154,7 @@ export default function RoutesTab({
                         <strong>⚠️ Alternate Detour Recalculated:</strong> Primary road segment intersects flooded hazards. Avoidance detour trajectory computed around reported hazards.
                       </div>
                     )}
+                    <p className="panel-subtitle">Computed from mapped road data; current flooding, closures, debris and accessibility are not verified.</p>
 
                     {route.alternatives && route.alternatives.length > 0 && (
                       <div className="route-alternatives-box" style={{ marginTop: '12px', padding: '10px 12px', background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.3)', borderRadius: '8px' }}>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 
-export default function AlertsTab({ alerts, floodHazards, hazardWarning }) {
+export default function AlertsTab({ alerts, floodHazards, hazardWarning, dashboardStatus = {} }) {
   const [filter, setFilter] = useState('ALL')
 
   // Combine alerts and flood hazards
@@ -38,6 +38,13 @@ export default function AlertsTab({ alerts, floodHazards, hazardWarning }) {
   return (
     <div className="tab-alerts">
       <div className="card-panel alerts-header-panel">
+        {(dashboardStatus.alerts === 'refreshing' || dashboardStatus.alerts === 'unavailable') && (
+          <p className="panel-subtitle">
+            {dashboardStatus.alerts === 'refreshing'
+              ? 'Alert feed refreshing; retained records are not current.'
+              : 'Alert feed unavailable; retained records may be stale.'}
+          </p>
+        )}
         <div className="panel-header">
           <div>
             <h2 className="panel-title">Active Disaster & Flood Bulletins</h2>

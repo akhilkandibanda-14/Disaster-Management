@@ -23,7 +23,13 @@ def get_shelters(
         shelters = service.get_shelters(latitude=latitude, longitude=longitude, radius_km=radius_km)
         return ShelterResponse(
             shelters=shelters,
-            total=len(shelters)
+            total=len(shelters),
+            data_status=getattr(service, "data_status", "AVAILABLE"),
+            warning=(
+                f"{getattr(service, 'invalid_record_count', 0)} shelter record(s) were excluded because their coordinates were invalid."
+                if getattr(service, "invalid_record_count", 0)
+                else None
+            ),
         )
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))

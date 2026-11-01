@@ -23,6 +23,7 @@ export default function OverviewTab({
   onNavigateToTab,
   isSevereWeather = false,
   isDemoMode = false,
+  dashboardStatus = {},
   t = {},
   incidents = []
 }) {
@@ -46,14 +47,45 @@ export default function OverviewTab({
   const isNoSafeRoute = route?.route_status === 'NO_SAFE_ROUTE'
 
   const nearestFacility = selectedFacility || (facilities && facilities.length > 0 ? facilities[0] : null)
+  const statusOf = (name) => dashboardStatus[name] || (loading ? 'loading' : 'unavailable')
+  const isAvailable = (name) => statusOf(name) === 'available'
+  const statusLabel = (name) => ({
+    loading: 'Loading',
+    available: 'Available',
+    unavailable: 'Unavailable',
+    refreshing: 'Refreshing'
+  }[statusOf(name)] || 'Degraded')
+  const unavailableValue = (name) => statusOf(name) === 'loading' ? 'Loading…' : 'Unavailable'
 
-  // Weather telemetry (simulated severe override if toggled, or real API telemetry)
-  const currentTemp = isSevereWeather ? '24.2' : (weather?.temperature != null ? weather.temperature.toFixed(1) : '29.6')
-  const currentRain = isSevereWeather ? '68.5' : (weather?.rainfall != null ? weather.rainfall.toFixed(1) : '0.0')
-  const currentHumidity = isSevereWeather ? '96' : (weather?.humidity != null ? `${weather.humidity}` : '41')
-  const currentWind = isSevereWeather ? '42.5' : (weather?.wind_speed != null ? weather.wind_speed.toFixed(1) : '16.9')
-  const currentCondition = isSevereWeather ? 'Heavy Monsoon Deluge' : (weather?.description || 'Clear')
-  const musiWaterLevel = isSevereWeather ? '4.92m (High Hazard Warning)' : (hydrology?.water_level != null ? `${hydrology.water_level}m (Normal)` : '2.85m (Normal)')
+  // The severe toggle is an explicit demo action; provider values are shown only when available.
+  const currentTemp = isSevereWeather ? '24.2' : (weather?.temperature != null ? weather.temperature.toFixed(1) : unavailableValue('weather'))
+  const currentRain = isSevereWeather ? '68.5' : (weather?.rainfall != null ? weather.rainfall.toFixed(1) : unavailableValue('weather'))
+  const currentHumidity = isSevereWeather ? '96' : (weather?.humidity != null ? `${weather.humidity}` : unavailableValue('weather'))
+  const currentWind = isSevereWeather ? '42.5' : (weather?.wind_speed != null ? weather.wind_speed.toFixed(1) : unavailableValue('weather'))
+  const currentCondition = isSevereWeather ? 'Heavy Monsoon Deluge' : (weather?.description || unavailableValue('weather'))
+  const musiWaterLevel = isSevereWeather
+    ? '4.92m (High Hazard Warning)'
+    : (hydrology?.water_level != null ? `${hydrology.water_level}m` : unavailableValue('hydrology'))
+  const hazardStatus = statusOf('locationWarning')
+  const hazardUnavailable = hazardStatus !== 'available'
+  const hazardHeadline = isSevereWeather
+    ? 'SEVERE MONSOON FLOODING ALERT — Greater Hyderabad Municipal Region'
+    : hazardUnavailable
+      ? 'FLOOD HAZARD STATUS UNAVAILABLE — Greater Hyderabad Municipal Region'
+      : hazardWarning?.is_in_hazard_zone
+        ? `FLOOD HAZARD INTERSECTION DETECTED (${hazardWarning.hazard_count} ZONES) — Greater Hyderabad Municipal Region`
+        : 'NO CONFIRMED FLOOD HAZARD REPORTED AT THIS LOCATION'
+  const hazardDescription = isSevereWeather
+    ? 'Simulated severe flood conditions active: Musi river catchment experiencing heavy runoff. Low-lying arterial roads inundated. Stay indoors and heed disaster advisories.'
+    : hazardUnavailable
+      ? `${statusLabel('locationWarning')}: the location hazard service did not return a result. Absence of data does not indicate safety.`
+      : hazardWarning?.is_in_hazard_zone
+        ? `Current coordinates intersect designated flood polygons (${hazardWarning.intersected_hazards.map(h => h.title).join(', ')}). Seek elevated ground immediately.`
+        : `${hazardWarning?.explanation || 'No confirmed flood hazard was returned for this location.'} Absence of an alert does not guarantee safety.`
+  const globalFeedStatuses = ['shelters', 'alerts', 'roads', 'gauges', 'hazards', 'incidents']
+    .map(name => dashboardStatus[name])
+  const globalFeedsRefreshing = globalFeedStatuses.some(status => status === 'refreshing')
+  const globalFeedsUnavailable = globalFeedStatuses.some(status => status === 'unavailable')
 
   const hyderabadPresets = [
     { name: 'Banjara Hills', lat: 17.4156, lon: 78.4350 },
@@ -104,7 +136,7 @@ export default function OverviewTab({
   return (
     <div className="tab-overview">
       {/* Top Flood Monitoring Status Banner (matching mini_project reference design) */}
-      <section className={`command-status-banner ${isSevereWeather ? 'severe' : hazardWarning?.is_in_hazard_zone ? 'danger' : 'normal'}`} aria-label="Regional Flood Status">
+      <section className={`command-status-banner ${isSevereWeather ? 'severe' : hazardUnavailable || !hazardWarning?.is_in_hazard_zone ? 'degraded' : 'danger'}`} aria-label="Regional Flood Status">
         <div className="banner-left-shield">
           <div className="banner-shield-icon" aria-hidden="true">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -113,31 +145,28 @@ export default function OverviewTab({
               <path d="M12 16h.01"></path>
             </svg>
           </div>
-          <span className={`banner-status-badge ${isSevereWeather ? 'badge-severe' : hazardWarning?.is_in_hazard_zone ? 'badge-danger' : 'badge-low'}`}>
-            {isSevereWeather ? 'HIGH HAZARD' : hazardWarning?.is_in_hazard_zone ? hazardWarning.highest_severity : 'LOW'}
+          <span className={`banner-status-badge ${isSevereWeather ? 'badge-severe' : hazardUnavailable || !hazardWarning?.is_in_hazard_zone ? 'badge-unknown' : 'badge-danger'}`}>
+            {isSevereWeather ? 'HIGH HAZARD' : hazardUnavailable ? statusLabel('locationWarning').toUpperCase() : hazardWarning?.is_in_hazard_zone ? hazardWarning.highest_severity : 'NO CONFIRMED ALERT'}
           </span>
         </div>
 
         <div className="banner-center-text">
           <strong className="banner-main-title">
-            {isSevereWeather 
-              ? 'SEVERE MONSOON FLOODING ALERT — Greater Hyderabad Municipal Region'
-              : hazardWarning?.is_in_hazard_zone
-                ? `FLOOD HAZARD INTERSECTION DETECTED (${hazardWarning.hazard_count} ZONES) — Greater Hyderabad Municipal Region`
-                : 'FLOOD MONITORING NORMAL — Greater Hyderabad Municipal Region'}
+            {hazardHeadline}
           </strong>
           <p className="banner-sub-text">
-            {isSevereWeather
-              ? 'Simulated severe flood conditions active: Musi river catchment experiencing heavy runoff. Low-lying arterial roads inundated. Stay indoors and heed disaster advisories.'
-              : hazardWarning?.is_in_hazard_zone
-                ? `Current coordinates intersect designated flood polygons (${hazardWarning.intersected_hazards.map(h => h.title).join(', ')}). Seek elevated ground immediately.`
-                : `Monsoon weather conditions currently stable. Musi river gauge levels normal. ${facilities.length || '1,000'} designated flood shelters and arterial evacuation routes are operational across Hyderabad.`}
+            {hazardDescription}
           </p>
         </div>
 
         <div className="banner-right-meta">
           <span className="banner-system-tag">SafeMap AI Flood Early Warning System</span>
           <span className="banner-safeguard-note">🛡️ 50km Model Safeguard Active</span>
+          {(globalFeedsRefreshing || globalFeedsUnavailable) && (
+            <span className="banner-safeguard-note">
+              {globalFeedsRefreshing ? 'Global feeds refreshing' : 'Global feed unavailable; retained data may be stale'}
+            </span>
+          )}
         </div>
       </section>
 
@@ -288,8 +317,8 @@ export default function OverviewTab({
                 <span className="panel-icon" aria-hidden="true">🌧️</span>
                 <h2 className="panel-title-text">{t.radarTitle || 'HYDERABAD ATMOSPHERIC RADAR'}</h2>
               </div>
-              <span className={`radar-status-badge ${isDemoMode ? 'badge-demo' : isSevereWeather ? 'badge-severe' : 'badge-normal'}`}>
-                {isDemoMode ? 'SIMULATED FLOOD [DEMO]' : isSevereWeather ? 'HEAVY FLOODING' : 'NORMAL'}
+              <span className={`radar-status-badge ${isDemoMode ? 'badge-demo' : isSevereWeather ? 'badge-severe' : isAvailable('weather') ? 'badge-normal' : 'badge-unknown'}`}>
+                {isDemoMode ? 'SIMULATED FLOOD [DEMO]' : isSevereWeather ? 'HEAVY FLOODING' : statusLabel('weather').toUpperCase()}
               </span>
             </div>
 
@@ -343,20 +372,20 @@ export default function OverviewTab({
                 <span className="river-name">{t.musiRiver || 'Musi River Telemetry'}:</span>
               </div>
               <strong className={`river-level ${isSevereWeather ? 'danger-text' : 'safe-text'}`}>
-                {musiWaterLevel} {isDemoMode ? '[DEMO]' : ''}
+                {musiWaterLevel} {isDemoMode ? '[DEMO]' : ''} {!isSevereWeather && !isAvailable('hydrology') ? `(${statusLabel('hydrology')})` : ''}
               </strong>
             </div>
           </section>
 
           {/* Card 2: Recommended Safe Shelter & Routing Console */}
-          <section className="card-panel shelter-card-panel" aria-label="Recommended Safe Shelter">
+          <section className="card-panel shelter-card-panel" aria-label="Recommended Shelter Candidate">
             <div className="panel-header-row">
               <div className="header-title-wrap">
                 <span className="panel-icon" aria-hidden="true">🛡️</span>
-                <h2 className="panel-title-text">{t.shelterTitle || 'RECOMMENDED SAFE SHELTER'}</h2>
+                <h2 className="panel-title-text">{t.shelterTitle || 'RECOMMENDED SHELTER CANDIDATE'}</h2>
               </div>
               <span className="shelter-count-badge">
-                {facilities.length ? `${facilities.length} IDENTIFIED CENTERS` : '1,000 IDENTIFIED CENTERS'}
+                {isAvailable('shelters') || isAvailable('facilities') ? `${facilities.length} IDENTIFIED CENTERS` : `${statusLabel('shelters')} · facility data`}
               </span>
             </div>
 
@@ -365,41 +394,42 @@ export default function OverviewTab({
                 <h3 className="shelter-name-headline" title={nearestFacility.name}>
                   {nearestFacility.name}
                 </h3>
+                <p className="panel-subtitle">Candidate listing only; operational status, capacity, accessibility and flood safety are not independently verified.</p>
 
                 {/* 2x2 Shelter Metric Grid */}
                 <div className="shelter-metrics-grid">
                   <div className="shelter-metric-tile">
                     <span className="metric-tile-label">⛰️ Ground Elevation</span>
                     <strong className="metric-tile-value safe-text">
-                      {nearestFacility.elevation_m ? `${nearestFacility.elevation_m} m` : (nearestFacility.distance_km != null ? `${nearestFacility.distance_km.toFixed(2)} km` : '2369 m')}
+                      {nearestFacility.elevation_m ? `${nearestFacility.elevation_m} m` : (nearestFacility.distance_km != null ? `${nearestFacility.distance_km.toFixed(2)} km` : 'Unavailable')}
                     </strong>
                   </div>
 
                   <div className="shelter-metric-tile">
                     <span className="metric-tile-label">🛡️ Flood Risk</span>
                     <strong className="metric-tile-value safe-text">
-                      {nearestFacility.flood_risk || 'Low'}
+                      {nearestFacility.flood_risk || 'Unavailable'}
                     </strong>
                   </div>
 
                   <div className="shelter-metric-tile">
                     <span className="metric-tile-label">♿ Accessibility</span>
                     <strong className="metric-tile-value">
-                      {nearestFacility.accessibility || nearestFacility.road_accessibility || 'Good'}
+                      {nearestFacility.accessibility || nearestFacility.road_accessibility || 'Unavailable'}
                     </strong>
                   </div>
 
                   <div className="shelter-metric-tile">
                     <span className="metric-tile-label">👥 Available Space</span>
                     <strong className="metric-tile-value">
-                      {nearestFacility.available_capacity != null ? `${nearestFacility.available_capacity}` : (nearestFacility.capacity || '704')}
+                      {nearestFacility.available_capacity != null ? `${nearestFacility.available_capacity}` : (nearestFacility.capacity != null ? `${nearestFacility.capacity}` : 'Unavailable')}
                     </strong>
                   </div>
                 </div>
 
                 <div className="shelter-equipped-notes">
                   <span className="equipped-icon" aria-hidden="true">📦</span>
-                  <span>Equipped: {nearestFacility.facilities || 'Water, Toilets, Food, First Aid'}</span>
+                  <span>Equipped: {nearestFacility.facilities || 'Unavailable in source data'}</span>
                 </div>
 
                 <div className="shelter-disclaimer-box">
@@ -417,7 +447,7 @@ export default function OverviewTab({
                   {isRouting ? (
                     <>
                       <span className="route-spinner" aria-hidden="true" />
-                      <span>{t.calculatingRoute || 'Computing Evacuation Route...'}</span>
+                      <span>{t.calculatingRoute || 'Computing mapped evacuation route...'}</span>
                     </>
                   ) : (
                     <>
@@ -433,7 +463,7 @@ export default function OverviewTab({
                   disabled={!nearestFacility}
                 >
                   <span aria-hidden="true">🧭</span>
-                  Navigate to this safety location
+                  Open external directions (not flood-verified)
                 </button>
 
                 {/* Route Result Panel */}
@@ -466,7 +496,11 @@ export default function OverviewTab({
                           <div className="stat-unit">
                             <span className="stat-lbl">ROAD CONDITION</span>
                             <strong className={`stat-val ${isDetour ? 'warning-text' : 'safe-text'}`}>
-                              {isDetour ? 'Detour (Floods Avoided)' : (route.road_condition_status || 'Passable')}
+                              {isDetour
+                                ? 'Detour computed (hazards avoided)'
+                                : route.road_condition_status === 'CLEAR'
+                                  ? 'Current status not verified'
+                                  : (route.road_condition_status || 'Not reported')}
                             </strong>
                           </div>
                         </div>
@@ -491,8 +525,14 @@ export default function OverviewTab({
               </div>
             ) : (
               <div className="shelter-loading-placeholder">
-                <span className="route-spinner" aria-hidden="true" />
-                <p>Locating closest emergency facilities...</p>
+                {statusOf('shelters') === 'loading' || statusOf('facilities') === 'loading'
+                  ? <span className="route-spinner" aria-hidden="true" />
+                  : <span aria-hidden="true">⚠️</span>}
+                <p>
+                  {statusOf('shelters') === 'loading' || statusOf('facilities') === 'loading'
+                    ? 'Loading emergency facility data...'
+                    : 'No emergency facility data is currently available. Confirm destinations directly with local authorities.'}
+                </p>
               </div>
             )}
 
@@ -503,7 +543,7 @@ export default function OverviewTab({
                 className="btn-link-action"
                 onClick={() => onNavigateToTab('directory')}
               >
-                Browse All {facilities.length || '1,000'} Centers & Hospitals →
+                Browse All {facilities.length || 'available'} Centers & Hospitals →
               </button>
             </div>
           </section>

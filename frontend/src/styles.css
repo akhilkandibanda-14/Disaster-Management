@@ -2888,6 +2888,10 @@ a:hover {
   color: #c084fc;
 }
 
+.command-status-banner.degraded .banner-shield-icon {
+  color: #f59e0b;
+}
+
 .banner-status-badge {
   padding: 3px 10px;
   border-radius: 6px;
@@ -2910,6 +2914,11 @@ a:hover {
 .badge-severe {
   background: #7c3aed;
   color: #ffffff;
+}
+
+.badge-unknown {
+  background: #92400e;
+  color: #fef3c7;
 }
 
 .banner-center-text {
@@ -3217,6 +3226,12 @@ a:hover {
   background: rgba(239, 68, 68, 0.2);
   color: #f87171;
   border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.radar-status-badge.badge-unknown {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fcd34d;
+  border: 1px solid rgba(245, 158, 11, 0.4);
 }
 
 .condition-headline {

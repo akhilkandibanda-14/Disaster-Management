@@ -1,9 +1,11 @@
 import pytest
+import pandas as pd
 from fastapi.testclient import TestClient
 from app.main import app
 from unittest.mock import patch
 from app.schemas.risk_map import GeographicRiskResponse
 from datetime import date, datetime
+from app.services.shelter import ShelterService
 
 client = TestClient(app)
 
@@ -141,3 +143,29 @@ def test_compatibility_preserved():
     response = client.get("/shelters/recommended?latitude=17.3850&longitude=78.4867&radius_km=20&top_n=5")
     assert response.status_code == 200
     assert "recommendations" in response.json()
+
+
+def test_invalid_shelter_coordinates_are_excluded_and_reported():
+    service = ShelterService.__new__(ShelterService)
+    service.df = pd.DataFrame([
+        {
+            "shelter_id": "VALID-1",
+            "name": "Valid candidate",
+            "latitude": 17.4,
+            "longitude": 78.4,
+            "data_status": "PUBLIC_UNVERIFIED",
+        },
+        {
+            "shelter_id": "INVALID-1",
+            "name": "Malformed candidate",
+            "latitude": float("nan"),
+            "longitude": 78.4,
+            "data_status": "PUBLIC_UNVERIFIED",
+        },
+    ])
+
+    shelters = service.get_shelters(latitude=17.4, longitude=78.4, radius_km=5)
+
+    assert [s.shelter_id for s in shelters] == ["VALID-1"]
+    assert service.data_status == "AVAILABLE_WITH_INVALID_RECORDS"
+    assert service.invalid_record_count == 1

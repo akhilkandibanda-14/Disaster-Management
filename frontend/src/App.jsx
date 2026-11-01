@@ -15,26 +15,57 @@ import { translations } from './utils/translations'
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000'
 const hyderabadLocation = { latitude: 17.385, longitude: 78.4867 }
 const isInHyderabad = ({ latitude, longitude }) => latitude >= 17.2 && latitude <= 17.6 && longitude >= 78.2 && longitude <= 78.7
+const ROUTE_ENDPOINT_TOLERANCE = 0.001
 
-const defaultInitialShelter = {
-  shelter_id: "S0738",
-  id: "S0738",
-  name: "Khairatabad Shelter 738",
-  latitude: 17.416844,
-  longitude: 78.464475,
-  capacity: 800.0,
-  current_occupancy: 96.0,
-  available_capacity: 704.0,
-  flood_risk: "Low",
-  facilities: "Water, Toilets, Food, First Aid",
-  road_accessibility: "Good",
-  accessibility: "Good",
-  elevation_m: 2369.0,
-  distance_km: 2.3,
-  operational_status: "OPEN",
-  shelter_type: "Permanent Flood Shelter",
-  data_status: "VERIFIED_FLOOD_SHELTER"
+const isCloseCoordinate = (actual, expected) => (
+  Array.isArray(actual) &&
+  actual.length === 2 &&
+  Number.isFinite(actual[0]) &&
+  Number.isFinite(actual[1]) &&
+  Math.abs(actual[0] - expected.longitude) <= ROUTE_ENDPOINT_TOLERANCE &&
+  Math.abs(actual[1] - expected.latitude) <= ROUTE_ENDPOINT_TOLERANCE
+)
+
+const validateRouteResponse = (data, origin, destination, facilityId) => {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Routing service returned an invalid response.')
+  }
+  if (facilityId && data.facility_id && String(data.facility_id) !== String(facilityId)) {
+    throw new Error('Routing service returned a route for a different destination.')
+  }
+
+  if (data.route_status === 'NO_SAFE_ROUTE') {
+    if (!Array.isArray(data.geometry) || data.geometry.length !== 0) {
+      throw new Error('Routing service returned an invalid no-route geometry.')
+    }
+    return data
+  }
+
+  if (data.route_status !== 'ROUTE_AVAILABLE') {
+    throw new Error(data.warnings?.[0] || 'No usable route is available for this destination.')
+  }
+  if (!Array.isArray(data.geometry) || data.geometry.length < 2) {
+    throw new Error('Routing service returned an empty route geometry.')
+  }
+  if (
+    !isCloseCoordinate(data.geometry[0], origin) ||
+    !isCloseCoordinate(data.geometry[data.geometry.length - 1], destination)
+  ) {
+    throw new Error('Routing service returned a route for different coordinates.')
+  }
+  return data
 }
+
+const dashboardResourceNames = [
+  'weather', 'risk', 'recommendation', 'shelters', 'facilities', 'alerts',
+  'roads', 'gauges', 'hydrology', 'hazards', 'locationWarning', 'incidents'
+]
+const globalDashboardResourceNames = ['shelters', 'alerts', 'roads', 'gauges', 'hazards', 'incidents']
+
+const initialDashboardStatus = dashboardResourceNames.reduce((status, name) => {
+  status[name] = 'loading'
+  return status
+}, {})
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('citizen')
@@ -49,11 +80,11 @@ export default function App() {
   const [weather, setWeather] = useState(null)
   const [riskData, setRiskData] = useState(null)
   const [recommendationResponse, setRecommendationResponse] = useState(null)
-  const [facilities, setFacilities] = useState([defaultInitialShelter])
-  const [selectedFacility, setSelectedFacility] = useState(defaultInitialShelter)
+  const [facilities, setFacilities] = useState([])
+  const [selectedFacility, setSelectedFacility] = useState(null)
   const [route, setRoute] = useState(null)
   const [alerts, setAlerts] = useState([])
-  const [shelters, setShelters] = useState([defaultInitialShelter])
+  const [shelters, setShelters] = useState([])
   const [roads, setRoads] = useState([])
   const [gauges, setGauges] = useState([])
   const [hydrology, setHydrology] = useState(null)
@@ -63,7 +94,11 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [isRouting, setIsRouting] = useState(false)
   const [error, setError] = useState('')
+  const [dashboardStatus, setDashboardStatus] = useState(initialDashboardStatus)
   const hasManualLocationSelection = useRef(false)
+  const dashboardRequestRef = useRef({ id: 0, controller: null })
+  const routeRequestRef = useRef({ id: 0, controller: null })
+  const isMountedRef = useRef(true)
 
   const t = translations[language] || translations.en
 
@@ -77,53 +112,87 @@ export default function App() {
   }
 
   const loadDashboard = async (currentLocation) => {
+    const requestId = dashboardRequestRef.current.id + 1
+    dashboardRequestRef.current.controller?.abort()
+    const controller = new AbortController()
+    dashboardRequestRef.current = { id: requestId, controller }
+
     setLoading(true)
     setError('')
+    setDashboardStatus(previous => {
+      const next = { ...previous }
+      const hasRetainedData = {
+        shelters: shelters.length > 0,
+        alerts: alerts.length > 0,
+        roads: roads.length > 0,
+        gauges: gauges.length > 0,
+        hazards: floodHazards.length > 0,
+        incidents: incidents.length > 0
+      }
+      dashboardResourceNames.forEach(name => {
+        next[name] = globalDashboardResourceNames.includes(name)
+          ? (hasRetainedData[name] ? 'refreshing' : 'loading')
+          : 'loading'
+      })
+      return next
+    })
+    setWeather(null)
+    setRiskData(null)
+    setRecommendationResponse(null)
+    setFacilities([])
+    setSelectedFacility(null)
+    // Global feeds remain visible while refreshing and are marked via dashboardStatus.
+    setHydrology(null)
+    setHazardWarning(null)
+    setRoute(null)
+    routeRequestRef.current.controller?.abort()
+    routeRequestRef.current = { id: routeRequestRef.current.id + 1, controller: null }
     const query = `latitude=${currentLocation.latitude}&longitude=${currentLocation.longitude}`
     const recQuery = `${query}&radius_km=15.0&top_n=5`
 
     try {
-      const [
-        health, 
-        weatherData, 
-        riskRes, 
-        shelterRes, 
-        shelterList,
-        emergencyServices,
-        alertData, 
-        roadList, 
-        gaugeList, 
-        hydroData,
-        hazardData,
-        locationWarningData,
-        incidentList
-      ] = await Promise.all([
-        request('/health').catch(() => ({})),
-        request(`/weather?${query}`).catch(() => null),
-        request(`/risk-map?${query}`).catch(() => null),
-        request(`/shelters/recommended?${recQuery}`).catch(() => null),
-        request('/shelters').catch(() => ({ shelters: [] })),
-        request(`/emergency-facilities?facility_type=HOSPITAL&${query}&radius_km=15`).catch(() => ({ facilities: [] })),
-        request('/disaster-alerts').catch(() => []),
-        request('/road-conditions').catch(() => []),
-        request('/gauges').catch(() => []),
-        request(`/hydrology/water-level?${query}`).catch(() => null),
-        request('/flood-hazards').catch(() => ({ hazards: [] })),
-        request(`/flood-hazards/check-location?${query}`).catch(() => null),
-        request('/incidents').catch(() => ({ incidents: [] }))
+      const requestResource = (name, path) => request(path, { signal: controller.signal })
+        .then(data => ({ name, status: 'available', data }))
+        .catch(loadError => ({ name, status: 'unavailable', error: loadError }))
+
+      const [healthResult, ...results] = await Promise.all([
+        request('/health', { signal: controller.signal }).then(data => ({ status: 'available', data })).catch(error => ({ status: 'unavailable', error })),
+        requestResource('weather', `/weather?${query}`),
+        requestResource('risk', `/risk-map?${query}`),
+        requestResource('recommendation', `/shelters/recommended?${recQuery}`),
+        requestResource('shelters', '/shelters'),
+        requestResource('facilities', `/emergency-facilities?facility_type=HOSPITAL&${query}&radius_km=15`),
+        requestResource('alerts', '/disaster-alerts'),
+        requestResource('roads', '/road-conditions'),
+        requestResource('gauges', '/gauges'),
+        requestResource('hydrology', `/hydrology/water-level?${query}`),
+        requestResource('hazards', '/flood-hazards'),
+        requestResource('locationWarning', `/flood-hazards/check-location?${query}`),
+        requestResource('incidents', '/incidents')
       ])
+
+      if (!isMountedRef.current || dashboardRequestRef.current.id !== requestId) return
+
+      const resources = Object.fromEntries(results.map(result => [result.name, result]))
+      const nextStatus = Object.fromEntries(
+        dashboardResourceNames.map(name => [name, resources[name].status])
+      )
+      setDashboardStatus(nextStatus)
+      setApiStatus(healthResult.status === 'available'
+        ? (healthResult.data?.demo_mode ? 'API Online · Demo Mode' : 'API Online')
+        : 'API Unavailable')
+      setWeather(resources.weather.status === 'available' ? resources.weather.data : null)
+      setRiskData(resources.risk.status === 'available' ? resources.risk.data : null)
+      setRecommendationResponse(resources.recommendation.status === 'available' ? resources.recommendation.data : null)
       
-      setApiStatus(health?.demo_mode ? 'API Online · Demo Mode' : 'API Online')
-      setWeather(weatherData)
-      setRiskData(riskRes)
-      setRecommendationResponse(shelterRes)
-      
-      const allShelters = (shelterList?.shelters || []).map(s => ({
+      const shelterList = resources.shelters.status === 'available' ? resources.shelters.data : null
+      const emergencyServices = resources.facilities.status === 'available' ? resources.facilities.data : null
+      const allShelters = (shelterList?.shelters || (resources.shelters.status === 'unavailable' ? shelters : [])).map(s => ({
         ...s,
         facility_type: 'SHELTER',
         id: s.shelter_id || s.id,
         name: s.name,
-        distance_km: s.distance_km || 2.3
+        distance_km: s.distance_km
       }))
       
       const rawServices = emergencyServices?.facilities || []
@@ -135,44 +204,71 @@ export default function App() {
         distance_km: e.distance_km
       }))
       
-      const combinedFacilities = allShelters.length > 0 ? [...allShelters, ...allServices] : [defaultInitialShelter, ...allServices]
+      const combinedFacilities = [...allShelters, ...allServices]
       setFacilities(combinedFacilities)
-      setShelters(allShelters.length > 0 ? allShelters : [defaultInitialShelter])
+      if (resources.shelters.status === 'available') setShelters(allShelters)
       
+      const shelterRes = resources.recommendation.status === 'available' ? resources.recommendation.data : null
       if (shelterRes?.recommendations?.[0]) {
         setSelectedFacility(shelterRes.recommendations[0])
       } else if (combinedFacilities.length > 0) {
         setSelectedFacility(combinedFacilities[0])
+      } else {
+        setSelectedFacility(null)
       }
       
-      setAlerts(alertData || [])
-      setRoads(roadList || [])
-      setGauges(gaugeList?.gauges || gaugeList || [])
-      setHydrology(hydroData)
-      setFloodHazards(hazardData?.hazards || [])
-      setHazardWarning(locationWarningData)
-      setIncidents(incidentList?.incidents || [])
+      if (resources.alerts.status === 'available') setAlerts(resources.alerts.data || [])
+      if (resources.roads.status === 'available') setRoads(resources.roads.data || [])
+      const gaugeList = resources.gauges.status === 'available' ? resources.gauges.data : null
+      if (resources.gauges.status === 'available') setGauges(gaugeList?.gauges || gaugeList || [])
+      setHydrology(resources.hydrology.status === 'available' ? resources.hydrology.data : null)
+      const hazardData = resources.hazards.status === 'available' ? resources.hazards.data : null
+      if (resources.hazards.status === 'available') setFloodHazards(hazardData?.hazards || [])
+      setHazardWarning(resources.locationWarning.status === 'available' ? resources.locationWarning.data : null)
+      const incidentList = resources.incidents.status === 'available' ? resources.incidents.data : null
+      if (resources.incidents.status === 'available') setIncidents(incidentList?.incidents || [])
     } catch (loadError) {
+      if (!isMountedRef.current || dashboardRequestRef.current.id !== requestId) return
       setApiStatus('API Unavailable')
       setError(loadError.message)
+      setDashboardStatus(dashboardResourceNames.reduce((status, name) => {
+        status[name] = 'unavailable'
+        return status
+      }, {}))
     } finally {
-      setLoading(false)
+      if (isMountedRef.current && dashboardRequestRef.current.id === requestId) {
+        setLoading(false)
+      }
     }
   }
 
   // Resolve the browser location on every page load before loading dashboard data.
   useEffect(() => {
+    isMountedRef.current = true
     refreshLocation()
+    return () => {
+      isMountedRef.current = false
+      dashboardRequestRef.current.id += 1
+      dashboardRequestRef.current.controller?.abort()
+      routeRequestRef.current.controller?.abort()
+      routeRequestRef.current = { id: routeRequestRef.current.id + 1, controller: null }
+    }
   }, [])
 
   const handleLocationSelect = (newLocation) => {
     hasManualLocationSelection.current = true
     setLocation(newLocation)
     setLocationStatus('Selected coordinates active')
+    routeRequestRef.current.controller?.abort()
+    routeRequestRef.current = { id: routeRequestRef.current.id + 1, controller: null }
+    setRoute(null)
+    setIsRouting(false)
     loadDashboard(newLocation)
   }
 
   const handleFacilitySelect = (facility) => {
+    routeRequestRef.current.controller?.abort()
+    routeRequestRef.current = { id: routeRequestRef.current.id + 1, controller: null }
     setSelectedFacility(facility)
     setRoute(null)
   }
@@ -185,15 +281,24 @@ export default function App() {
 
   const calculateRouteForFacility = async (fac = selectedFacility) => {
     if (!fac) return
+    routeRequestRef.current.controller?.abort()
+    const routeRequestId = routeRequestRef.current.id + 1
+    const controller = new AbortController()
+    routeRequestRef.current = { id: routeRequestId, controller }
+    const routeLocation = location
     setIsRouting(true)
+    setRoute(null)
     setError('')
     try {
-      const destLat = fac.latitude ?? 17.416844
-      const destLon = fac.longitude ?? 78.464475
+      const destLat = fac.latitude
+      const destLon = fac.longitude
+      if (destLat == null || destLon == null) {
+        throw new Error('Selected facility has no usable coordinates.')
+      }
       const facId = fac.facility_id || fac.id || fac.shelter_id
       
       const payload = { 
-        origin: { latitude: location.latitude, longitude: location.longitude },
+        origin: { latitude: routeLocation.latitude, longitude: routeLocation.longitude },
         destination: { latitude: destLat, longitude: destLon },
         compute_alternatives: false
       }
@@ -205,13 +310,22 @@ export default function App() {
       const data = await request('/evacuation-route', { 
         method: 'POST', 
         headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify(payload) 
+        body: JSON.stringify(payload),
+        signal: controller.signal
       })
-      setRoute(data)
+      const validatedData = validateRouteResponse(data, routeLocation, { latitude: destLat, longitude: destLon }, facId)
+      if (isMountedRef.current && routeRequestRef.current.id === routeRequestId) {
+        setRoute(validatedData)
+      }
     } catch (routeError) {
-      setError(routeError.message)
+      if (routeError.name === 'AbortError') return
+      if (isMountedRef.current && routeRequestRef.current.id === routeRequestId) {
+        setError(routeError.message)
+      }
     } finally {
-      setIsRouting(false)
+      if (isMountedRef.current && routeRequestRef.current.id === routeRequestId) {
+        setIsRouting(false)
+      }
     }
   }
 
@@ -239,6 +353,7 @@ export default function App() {
     setLocationStatus('Acquiring live GPS...')
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        if (!isMountedRef.current || hasManualLocationSelection.current) return
         const currentLocation = { latitude: position.coords.latitude, longitude: position.coords.longitude }
         setLocation(currentLocation)
         if (isInHyderabad(currentLocation)) {
@@ -250,6 +365,7 @@ export default function App() {
         loadDashboard(currentLocation)
       },
       () => {
+        if (!isMountedRef.current || hasManualLocationSelection.current) return
         setLocationStatus('Location unavailable - center active')
         setLocation(hyderabadLocation)
         loadDashboard(hyderabadLocation)
@@ -307,6 +423,7 @@ export default function App() {
             onMyLocation={refreshLocation}
             onNavigateToTab={setActiveTab}
             isSevereWeather={isSevereWeather}
+            dashboardStatus={dashboardStatus}
             t={t}
             incidents={incidents}
           />
@@ -340,6 +457,7 @@ export default function App() {
             floodHazards={floodHazards}
             loading={loading}
             isRouting={isRouting}
+            dashboardStatus={dashboardStatus}
             onCalculateRoute={() => calculateRouteForFacility(selectedFacility)}
             onOpenNavigation={() => openExternalNavigation(selectedFacility)}
             onMyLocation={refreshLocation}
@@ -362,6 +480,7 @@ export default function App() {
             alerts={alerts}
             floodHazards={floodHazards}
             hazardWarning={hazardWarning}
+            dashboardStatus={dashboardStatus}
           />
         )}
 

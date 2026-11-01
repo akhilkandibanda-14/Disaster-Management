@@ -12,12 +12,14 @@ class ShelterService:
         self._load_data()
         
     def _load_data(self):
+        self.invalid_record_count = 0
         if os.path.exists(self.csv_path):
             self.df = pd.read_csv(self.csv_path)
             # Replace NaNs with None to make JSON serialization valid
             self.df = self.df.where(pd.notnull(self.df), None)
         else:
             self.df = pd.DataFrame()
+        self.data_status = "AVAILABLE" if not self.df.empty else "UNAVAILABLE"
 
     def _haversine(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
         lat1, lon1, lat2, lon2 = map(math.radians, [lat1, lon1, lat2, lon2])
@@ -29,17 +31,50 @@ class ShelterService:
         return c * r
 
     def get_shelters(self, latitude: Optional[float] = None, longitude: Optional[float] = None, radius_km: Optional[float] = None) -> List[Shelter]:
+        self.invalid_record_count = 0
         if self.df is None or self.df.empty:
+            self.data_status = "UNAVAILABLE"
             return []
             
         if radius_km is not None and (latitude is None or longitude is None):
             raise ValueError("Latitude and longitude must be provided when radius_km is specified.")
+        if latitude is not None or longitude is not None:
+            try:
+                if (
+                    latitude is None
+                    or longitude is None
+                    or not math.isfinite(float(latitude))
+                    or not math.isfinite(float(longitude))
+                    or not -90 <= float(latitude) <= 90
+                    or not -180 <= float(longitude) <= 180
+                ):
+                    raise ValueError
+            except (TypeError, ValueError):
+                raise ValueError("Latitude and longitude must be finite values within valid coordinate bounds.")
+        if radius_km is not None and (
+            not math.isfinite(float(radius_km)) or float(radius_km) <= 0
+        ):
+            raise ValueError("Radius must be a finite positive value.")
             
         results = []
         for _, row in self.df.iterrows():
+            try:
+                row_latitude = float(row["latitude"])
+                row_longitude = float(row["longitude"])
+                if (
+                    not math.isfinite(row_latitude)
+                    or not math.isfinite(row_longitude)
+                    or not -90 <= row_latitude <= 90
+                    or not -180 <= row_longitude <= 180
+                ):
+                    raise ValueError("invalid shelter coordinates")
+            except (KeyError, TypeError, ValueError):
+                self.invalid_record_count += 1
+                continue
+
             dist = None
             if latitude is not None and longitude is not None:
-                dist = self._haversine(latitude, longitude, float(row['latitude']), float(row['longitude']))
+                dist = self._haversine(latitude, longitude, row_latitude, row_longitude)
                 
             if radius_km is not None and dist > radius_km:
                 continue
@@ -52,7 +87,12 @@ class ShelterService:
                 if pd.isna(v):
                     shelter_dict[k] = None
                     
-            results.append(Shelter(**shelter_dict))
+            try:
+                results.append(Shelter(**shelter_dict))
+            except (TypeError, ValueError):
+                self.invalid_record_count += 1
+
+        self.data_status = "AVAILABLE_WITH_INVALID_RECORDS" if self.invalid_record_count else "AVAILABLE"
             
         if latitude is not None and longitude is not None:
             results.sort(key=lambda x: x.distance_km if x.distance_km is not None else float('inf'))

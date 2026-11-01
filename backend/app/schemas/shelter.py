@@ -26,3 +26,5 @@ class Shelter(BaseModel):
 class ShelterResponse(BaseModel):
     shelters: List[Shelter]
     total: int
+    data_status: str = "AVAILABLE"
+    warning: Optional[str] = None

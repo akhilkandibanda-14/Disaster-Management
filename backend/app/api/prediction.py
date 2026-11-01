@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
+from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Body, HTTPException
 
 from app.config import is_in_hyderabad
-from app.schemas.prediction import PredictionRequest, PredictionResponse, IndofloodsModelInput
+from app.schemas.prediction import PredictionRequest, PredictionResponse
 from app.services.prediction import predict
 
 router = APIRouter(tags=["prediction"])
@@ -27,8 +28,7 @@ def predict_flood_risk(request: PredictionRequest) -> PredictionResponse:
     )
 
 @router.post("/predict/internal", response_model=PredictionResponse)
-def predict_internal(request: IndofloodsModelInput) -> PredictionResponse:
-    features = request.model_dump()
+def predict_internal(features: dict[str, Any] = Body(...)) -> PredictionResponse:
     try:
         result = predict(features)
         return PredictionResponse(
@@ -37,6 +37,7 @@ def predict_internal(request: IndofloodsModelInput) -> PredictionResponse:
             severe_flood_probability=result.get("severe_flood_probability"),
             risk_level="HIGH" if result.get("severe_flood_probability", 0) >= 0.7 else ("MEDIUM" if result.get("severe_flood_probability", 0) >= 0.4 else "LOW"),
             source="INDOFLOODS_ML_MODEL",
+            message=result.get("score_semantics"),
             model_name=result.get("model_name"),
             model_version_status=result.get("model_version_status")
         )

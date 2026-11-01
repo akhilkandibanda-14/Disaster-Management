@@ -22,3 +22,4 @@ class ShelterRecommendationResponse(BaseModel):
     risk_context: RiskContext
     recommendations: List[RecommendedShelter]
     limitations: List[str]
+    candidate_status: str = "AVAILABLE"

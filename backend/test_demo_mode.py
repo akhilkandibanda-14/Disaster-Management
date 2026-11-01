@@ -1,7 +1,9 @@
 import pytest
 from fastapi.testclient import TestClient
+from unittest.mock import patch
 
 from app.main import app
+from app.config import settings
 
 client = TestClient(app)
 
@@ -127,9 +129,10 @@ def test_official_alerts_vs_indicative_zones_distinction():
 
 def test_simulated_weather_is_marked_demo():
     """Verify simulated weather data explicitly indicates demo source."""
-    weather_res = client.get("/weather?latitude=17.3820&longitude=78.4910")
-    assert weather_res.status_code == 200
-    weather = weather_res.json()
-    
-    assert weather.get("source") == "DEMO / SIMULATED DATA"
-    assert "Simulated" in weather.get("warning", "")
+    with patch.object(settings, "weather_api_key", ""), patch.object(settings, "demo_mode", True):
+        weather_res = client.get("/weather?latitude=17.3820&longitude=78.4910")
+        assert weather_res.status_code == 200
+        weather = weather_res.json()
+
+        assert weather.get("source") == "DEMO / SIMULATED DATA"
+        assert "Simulated" in weather.get("warning", "")

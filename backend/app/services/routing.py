@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 import logging
+import math
 import threading
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
@@ -28,6 +29,38 @@ MAX_HAZARD_SNAP_DISTANCE_M = 150.0
 HAZARD_STATUSES = {"BLOCKED", "FLOODED", "DANGEROUS"}
 _hazard_eval_cache_lock = threading.Lock()
 _hazard_eval_cache: Dict[Tuple[Any, ...], Tuple[Set[Tuple[int, int, int]], Dict[Tuple[int, int, int], float], List[str], List[str], Set[str], bool]] = {}
+
+
+def _validate_coordinate(value: Any, label: str, minimum: float, maximum: float) -> Optional[str]:
+    try:
+        numeric_value = float(value)
+    except (TypeError, ValueError):
+        return f"{label} must be a finite number."
+    if not math.isfinite(numeric_value) or not minimum <= numeric_value <= maximum:
+        return f"{label} must be a finite value between {minimum:g} and {maximum:g}."
+    return None
+
+
+def _validate_route_geometry(geometry: List[List[float]], origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: float) -> bool:
+    if len(geometry) < 2:
+        return False
+    try:
+        for point in geometry:
+            if len(point) != 2 or not all(math.isfinite(float(value)) for value in point):
+                return False
+    except (TypeError, ValueError):
+        return False
+    for point in geometry:
+        if len(point) != 2:
+            return False
+        if not (-180 <= point[0] <= 180 and -90 <= point[1] <= 90):
+            return False
+    return (
+        math.isclose(geometry[0][0], origin_lon, abs_tol=1e-9)
+        and math.isclose(geometry[0][1], origin_lat, abs_tol=1e-9)
+        and math.isclose(geometry[-1][0], dest_lon, abs_tol=1e-9)
+        and math.isclose(geometry[-1][1], dest_lat, abs_tol=1e-9)
+    )
 
 
 def _hazard_cache_key(G: nx.MultiDiGraph, hazards: List[Any], policy: HazardPolicy) -> Tuple[Any, ...]:
@@ -206,6 +239,17 @@ def build_graph_route(
     """
     if policy is None:
         policy = HazardPolicy()
+
+    for value, label, minimum, maximum in (
+        (origin_lat, "Origin latitude", -90.0, 90.0),
+        (origin_lon, "Origin longitude", -180.0, 180.0),
+        (dest_lat, "Destination latitude", -90.0, 90.0),
+        (dest_lon, "Destination longitude", -180.0, 180.0),
+    ):
+        coordinate_error = _validate_coordinate(value, label, minimum, maximum)
+        if coordinate_error:
+            status = "INVALID_ORIGIN" if label.startswith("Origin") else "INVALID_DESTINATION"
+            return _build_error_response(status, [coordinate_error])
 
     # 1. Ensure the road network is loaded
     try:
@@ -422,6 +466,15 @@ def build_graph_route(
     geometry.append([G.nodes[dest_node]["x"], G.nodes[dest_node]["y"]])
     geometry.append([dest_lon, dest_lat])
 
+    if not _validate_route_geometry(geometry, origin_lat, origin_lon, dest_lat, dest_lon):
+        return _build_error_response(
+            "ROUTE_UNAVAILABLE",
+            ["Computed route geometry failed validation and was discarded."],
+            road_condition_status=road_condition_status,
+            data_sources_used=list(sources_used),
+            stale_hazards_present=stale_hazards_present,
+        )
+
     # 10. Meaningful Alternative Route Generation with Independence Validation
     alternatives: List[AlternativeRoute] = []
     if compute_alternatives and len(route_nodes) > 3:
@@ -483,6 +536,14 @@ def build_graph_route(
     facility_id = getattr(shelter, "facility_id", None) or getattr(shelter, "shelter_id", None)
     destination_name = getattr(shelter, "name", None)
     destination_type = getattr(shelter, "facility_type", None) or ("SHELTER" if shelter is not None else None)
+    if shelter is not None and (
+        not getattr(shelter, "operational_status_verified", False)
+        or not getattr(shelter, "capacity_verified", False)
+        or getattr(shelter, "data_status", "PUBLIC_UNVERIFIED") != "VERIFIED"
+    ):
+        warnings.append(
+            "Destination facility status, capacity, accessibility, and flood safety are not independently verified."
+        )
 
     return EvacuationRouteResponse(
         geometry=geometry,
@@ -501,7 +562,9 @@ def build_graph_route(
         destination_name=destination_name,
         destination_type=destination_type,
         is_rerouted=is_rerouted,
-        warnings=warnings,
+        warnings=warnings + [
+            "Route is computed from static OpenStreetMap road geometry and is not verified safe for current flooding, closures, debris, or accessibility."
+        ],
         alternatives=alternatives,
         data_sources_used=sorted(list(sources_used)),
         observation_freshness=datetime.now(timezone.utc).isoformat(),

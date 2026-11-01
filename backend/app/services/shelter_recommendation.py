@@ -87,6 +87,12 @@ class ShelterRecommendationService:
             "Real-time road safety is not integrated.",
             "Ranking is currently distance-based."
         ]
+        if not candidates:
+            limitations.append("No shelter candidates were returned from the available dataset.")
+        if getattr(self.shelter_service, "data_status", "AVAILABLE") == "AVAILABLE_WITH_INVALID_RECORDS":
+            limitations.append(
+                f"{self.shelter_service.invalid_record_count} shelter record(s) were excluded because their coordinates were invalid."
+            )
         if not risk_context.prediction_available:
             limitations.append("Risk-based shelter assessment is unavailable for this location.")
             
@@ -94,7 +100,8 @@ class ShelterRecommendationService:
             request_location=RequestLocation(latitude=latitude, longitude=longitude),
             risk_context=risk_context,
             recommendations=recommended_shelters,
-            limitations=limitations
+            limitations=limitations,
+            candidate_status=getattr(self.shelter_service, "data_status", "AVAILABLE"),
         )
 
 # Dependency provider
