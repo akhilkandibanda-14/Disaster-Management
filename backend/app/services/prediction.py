@@ -16,7 +16,7 @@ def _ensure_ml_package_path() -> None:
         sys.path.insert(0, project_root)
 
 def resolve_model_path() -> Path:
-    configured = Path("ml/models/flood_severity_model.joblib")
+    configured = Path(settings.flood_model_path)
     return configured if configured.is_absolute() else PROJECT_ROOT / configured
 
 @lru_cache(maxsize=1)

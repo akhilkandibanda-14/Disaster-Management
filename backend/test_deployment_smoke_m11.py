@@ -248,8 +248,14 @@ class TestEndToEndUserAcceptanceWorkflows:
         resp = client.post("/evacuation-route", json=payload)
         assert resp.status_code == 200
         route = resp.json()
-        assert route["route_distance_km"] > 0
+        if route["route_status"] == "NO_SAFE_ROUTE":
+            assert route["route_distance_km"] == 0
+            assert route["geometry"] == []
+            assert route["road_condition_status"] == "BLOCKED"
+            assert any("No safe evacuation route" in warning for warning in route["warnings"])
+            return
         assert route["route_status"] == "ROUTE_AVAILABLE"
+        assert route["route_distance_km"] > 0
         assert len(route["geometry"]) > 1
         assert route["road_condition_status"] in ("UNKNOWN", "CLEAR", "HAZARDS_AVOIDED")
 

@@ -79,7 +79,7 @@ class IntegrationService:
 
     def validate_preprocessing(self, vector: Dict[str, Any]) -> int:
         """
-        Passes the 118-feature vector through the preprocessor to ensure it outputs 124 features.
+        Passes the 118-feature vector through the preprocessor to ensure it outputs 130 features.
         Returns the number of processed features.
         """
         df = pd.DataFrame([vector])[self.num_cols + self.cat_cols]

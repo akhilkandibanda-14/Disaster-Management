@@ -11,7 +11,7 @@ def get_risk_level(probability):
         return "LOW"
 
 def main():
-    MODEL_PATH = "ml/models/flood_risk_model.joblib"
+    MODEL_PATH = "ml/models/flood_severity_model.joblib"
     
     if not Path(MODEL_PATH).exists():
         print(f"Error: Model not found at {MODEL_PATH}. Please train the model first.")

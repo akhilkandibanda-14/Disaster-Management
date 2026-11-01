@@ -26,17 +26,17 @@ During major monsoon and extreme weather events, emergency responders and citize
 The application provides two purpose-built dashboard interfaces selectable via the top navigation bar:
 
 ### Citizen Dashboard
-- **Live Geolocation with Fallback:** Automatically requests user browser coordinates, validating whether they fall within the supported Hyderabad bounding box (`[17.20, 78.20]` to `[17.60, 78.70]`), with fallback to central Hyderabad (`17.3850° N, 78.4867° E`).
+- **Live Geolocation with Fallback:** Automatically requests browser coordinates on page load. GPS coordinates outside Hyderabad may still be displayed, but Hyderabad-specific flood services and routing remain geographically restricted to `[17.20, 78.20]`–`[17.60, 78.70]`; denied or unavailable GPS falls back to central Hyderabad (`17.3850° N, 78.4867° E`).
 - **Interactive Leaflet Map:** Displays OpenStreetMap raster tiles, real-time user location markers, recommended shelter markers, and rendered evacuation route polylines.
 - **Transparent Status Alerts:** Clearly informs users when flood predictions are unavailable (`MODEL_UNSUPPORTED`) or when hydrological observations use demonstration data.
 - **Shelter Recommendation Card:** Lists candidate shelters ranked by proximity score, presenting name, distance, candidate score, and transparent safety verification disclaimers.
 - **Evacuation Route Planner:** Triggers on-demand route calculation to the top recommended shelter, displaying calculated distance, snapped network nodes, and road source attribution.
 - **Environmental Context:** Shows current ambient weather (temperature, humidity, precipitation, wind speed) and hydrological river level observations.
-- **Emergency Alert Stream:** Displays active simulated or database-backed disaster bulletins.
+- **Emergency Alert Stream:** Displays demo-simulated bulletins in `DEMO_MODE`; database-backed records are used only when demo mode is disabled. Records are not presented as live official alerts unless their response provenance says so.
 
 ### Operations Dashboard
 - **System Telemetry & Health Metrics:** High-level dashboard cards tracking API connectivity status, active ML model version, feature contract specifications (118 raw / 130 processed), and hydrology data status.
-- **Interactive Operations Map:** Allows administrators to view all 155 official INDOFLOODS river gauge markers across India, all public shelters, and active routing corridors.
+- **Interactive Operations Map:** Allows administrators to view 155 merged INDOFLOODS reference-gauge markers across India, public-unverified shelters, and evaluated routing corridors.
 - **Click-to-Select Coordinate Inspection:** Clicking anywhere on the operations map immediately queries coordinate coverage against the 50 km gauge threshold, displaying the nearest gauge ID and exact distance.
 - **Shelter Data Status Audit:** Aggregates verification statistics across the shelter inventory (e.g., count of `PUBLIC_UNVERIFIED` listings, facilities with unknown capacity or operational status).
 - **Road Network Diagnostics:** Exposes graph metadata for the loaded OpenStreetMap network (node count, edge count, coordinate reference system, and road attribute tags).
@@ -74,7 +74,7 @@ flowchart TD
         EXT_OpenWeather["OpenWeather API<br/>(Current Conditions)"]
         EXT_OSM_Roads["OpenStreetMap GraphML<br/>(Hyderabad Road Graph)"]
         EXT_OSM_Shelters["Public Shelter Listings CSV<br/>(GHMC Facilities)"]
-        EXT_INDOFLOODS["INDOFLOODS Catchment Dataset<br/>(155 Gauges, 4,548 Events)"]
+        EXT_INDOFLOODS["INDOFLOODS Catchment Dataset<br/>(155 Merged Gauges, 4,548 Processed Event Rows)"]
         ML_Model["RandomForest Pipeline Artifact<br/>(flood_severity_model.joblib)"]
         DB_Postgres["Optional PostgreSQL / PostGIS<br/>(Docker Container)"]
     end
@@ -137,8 +137,8 @@ flowchart TD
 
 The flood prediction pipeline is built upon the published **INDOFLOODS** hydrological dataset, which documents historical flood events across India.
 
-- **Source Event Volume:** 4,548 recorded flood events.
-- **Unique Gauges:** 155 official river discharge/level monitoring stations across India.
+- **Processed Event Volume:** 4,548 processed training event rows.
+- **Unique Training Gauges:** 155 unique gauge IDs, corresponding to 155 merged reference gauges across India.
 - **Classification Target:** `flood_severity` (Binary):
   - `0`: Flood (2,919 occurrences / 64.18%)
   - `1`: Severe Flood (1,629 occurrences / 35.82%)
@@ -231,7 +231,7 @@ Daily antecedent precipitation is calculated dynamically using the **Open-Meteo 
 
 ## 10. Shelter Data Provenance & `PUBLIC_UNVERIFIED` Limitations
 
-- **Data Provenance:** Shelters are compiled from public community directories and municipal listings in Hyderabad (`data/raw/shelters/hyderabad_shelters.csv`, 12 facilities including GHMC community halls and homeless shelters).
+- **Data Provenance:** Shelters are compiled from public community directories and municipal listings in Hyderabad (`data/raw/shelters/hyderabad_shelters.csv`, 11 facilities).
 - **Data Status Label:** `PUBLIC_UNVERIFIED`.
 - **Known Data Deficits:**
   - Real-time operational availability is currently `UNKNOWN`.
@@ -305,7 +305,7 @@ cd ..
 ```
 
 1. **Train and Provision the Flood Severity Model:**
-   The training dataset (`data/processed/indofloods_ml_dataset.csv`) is tracked in Git. To train the Random Forest pipeline and generate the model artifact:
+   The training dataset (`data/processed/indofloods_ml_dataset.csv`) is tracked in Git. To train the Random Forest pipeline and generate the single runtime model artifact:
    ```powershell
    # Run from repository root:
    python ml/train_indofloods.py
@@ -364,18 +364,21 @@ Open `http://localhost:5173` in your browser.
 | `APP_ENV` | `development` | Application runtime environment |
 | `DEMO_MODE` | `true` | When true, runs without requiring a live PostgreSQL instance |
 | `DATABASE_URL` | `postgresql+psycopg://postgres:postgres@localhost:5432/disaster_management` | SQLAlchemy database connection string |
-| `GOOGLE_MAPS_API_KEY`| *(empty)* | Optional future provider key |
-| `WEATHER_API_KEY` | *(empty)* | OpenWeather API key (uses simulated fallback when empty in demo mode) |
+| `GOOGLE_MAPS_API_KEY`| *(empty)* | Reserved configuration; not used by the app. Embedded maps use Leaflet/OSM, and directions use a public Google Maps URL without an API key. |
+| `WEATHER_API_KEY` | *(empty)* | OpenWeather API key. If absent and `DEMO_MODE=true`, weather is simulated and labeled; provider outages return an error rather than silently falling back. |
 | `CORS_ORIGINS` | `["http://localhost:5173", "http://127.0.0.1:5173"]` | Permitted browser origins |
 | `DATABASE_POOL_SIZE` | `5` | SQLAlchemy connection pool size |
-| `FLOOD_DATASET_PATH` | `ml/data/flood_dataset.csv` | Dataset reference path |
-| `FLOOD_MODEL_PATH` | `ml/models/flood_risk_model.joblib` | Saved model pipeline artifact path |
+| `FLOOD_MODEL_PATH` | `ml/models/flood_severity_model.joblib` | Runtime model pipeline artifact path. Training input is fixed at `data/processed/indofloods_ml_dataset.csv` in `ml/train_indofloods.py`. |
 
 ### Frontend Configuration (`frontend/.env`)
 | Variable | Default Value | Description |
 | :--- | :--- | :--- |
 | `VITE_API_BASE_URL` | `http://127.0.0.1:8000` | Backend API root URL |
-| `VITE_GOOGLE_MAPS_API_KEY` | *(empty)* | Optional future mapping provider key |
+| `VITE_GOOGLE_MAPS_API_KEY` | *(empty)* | Reserved/unused. Leaflet renders the embedded map; public Google Maps directions URLs do not require this key. |
+
+The raw INDOFLOODS coordinate file contains 214 rows. After joining coordinates with
+catchment characteristics, the runtime exposes 155 merged reference gauges. The processed
+training dataset contains 155 unique gauge IDs across 4,548 event rows.
 
 ---
 
@@ -388,9 +391,11 @@ Interactive OpenAPI documentation is accessible at `http://127.0.0.1:8000/docs`.
   - **Purpose:** Service health check and demo mode inspection.
   - **Response:** `{"status": "ok", "service": "disaster-management-api", "demo_mode": true}`
 - `GET /road-conditions`
-  - **Purpose:** Retrieves reported road hazards and blockages within Hyderabad.
+  - **Purpose:** Retrieves road-condition records. In `DEMO_MODE=true`, these are explicitly labeled simulated demo records; with demo mode disabled, records come from PostgreSQL.
 - `GET /disaster-alerts`
-  - **Purpose:** Retrieves active administrative disaster bulletins.
+  - **Purpose:** Retrieves flood-type alert records. In `DEMO_MODE=true`, these are explicitly labeled simulated demo records; with demo mode disabled, records come from PostgreSQL.
+- `GET /health/live`, `GET /health/ready`
+  - **Purpose:** Process liveness and dependency/readiness probes.
 
 ### Prediction Endpoints
 - `POST /predict/integrated`
@@ -434,7 +439,23 @@ Interactive OpenAPI documentation is accessible at `http://127.0.0.1:8000/docs`.
   - **Purpose:** Recommends nearest candidate shelters sorted by proximity score with risk context and safety disclaimers.
 - `POST /evacuation-route`
   - **Payload:** `{"origin": {"latitude": float, "longitude": float}, "destination": ...}` or `shelter_id`
-  - **Purpose:** Calculates Dijkstra shortest path over OpenStreetMap road network graph for Hyderabad, returning true GeoJSON linestring geometry.
+  - **Purpose:** Calculates a Dijkstra path over the Hyderabad OpenStreetMap road graph, returning route geometry and explicit hazard limitations. It is not a flood-safe or live-traffic guarantee.
+
+### Flood Hazard, Facility, Incident, and Curation Endpoints
+- `GET /flood-hazards`, `GET /flood-hazards/check-location`, `GET /flood-hazards/{hazard_id}`
+  - **Purpose:** Returns flood-only hazard records and location intersection checks with `AUTHORITATIVE`, `PUBLIC_UNVERIFIED`, `DEMO`, or `STALE` provenance labels where applicable.
+- `GET /emergency-facilities`, `GET /emergency-facilities/{facility_id}`
+  - **Purpose:** Lists emergency facilities and their verification metadata. `POST /emergency-facilities/{facility_id}/verify` requires the configured analyst/admin API key.
+- `GET /incidents`, `GET /incidents/{incident_id}`
+  - **Purpose:** Public incident reporting/read operations; institutional status changes require the repository’s authorization rules.
+- `GET /data-curation/manifest`, `/historical-events`, `/readiness-audit`, `/negative-controls/summary`
+  - **Purpose:** Public curation/readiness metadata.
+- `GET /data-curation/intake/sources`, `/intake/log`
+  - **Auth:** Analyst or Admin API key.
+- `POST /data-curation/intake/validate`
+  - **Auth:** Analyst or Admin API key; dry-run only.
+- `POST /data-curation/intake/commit`
+  - **Auth:** Admin API key; writes an authorized intake batch.
 
 ---
 
@@ -746,7 +767,7 @@ Validates the complete application in its deployment configuration and establish
 ### 2. End-to-End User Acceptance Workflows (11 Verified)
 Verified through automated acceptance testing in [`backend/test_deployment_smoke_m11.py`](backend/test_deployment_smoke_m11.py):
 1. **Flood Map & Hazards**: Loads polygon hazard zones with coordinate bounds and metadata.
-2. **Official Flood Alerts**: Gathers official flood alerts with source timestamps (IMD / TSDPS).
+2. **Alert Provenance**: Presents alert records with their source and provenance; demo-mode records are simulated and are not official advisories.
 3. **Data Provenance**: Distinguishes `AUTHORITATIVE`, `PUBLIC_UNVERIFIED`, `DEMO`, and `STALE` data.
 4. **Evacuation Routing**: Computes valid shortest paths to selected emergency facilities.
 5. **Hazard Avoidance Detour**: Replaces shortest path with detour when crossing flooded road segments (`HAZARDS_AVOIDED`).
@@ -763,9 +784,11 @@ Documented in [`docs/deployment_and_operations_guide.md`](docs/deployment_and_op
 - **Maintenance & Recovery Runbook**: Container startup/shutdown, log streaming, PostgreSQL & curated data backup/restore, API key rotation, provider failure recovery, safe road graph updates, and release rollbacks.
 
 ### 4. Test Suite Summary
-- **Milestone 11 Suite**: 22 passed, 0 failed in 26.36s ([`backend/test_deployment_smoke_m11.py`](backend/test_deployment_smoke_m11.py))
-- **Total Backend Tests**: **292 passed**, 0 failed, 41 warnings in 146.12s
-- **Frontend Production Build**: Clean build in 243ms (`npm run build`)
+Historical milestone counts are not treated as current validation. Reproduce the backend
+suite from `backend/` with `python -m pytest -q`, and build the frontend from `frontend/`
+with `npm run build`. Report passed, failed, skipped, and warning counts from the actual
+run; missing ignored model or road-graph artifacts must not be reported as a successful
+full routing/model validation.
 
 > [!CAUTION]
 > **Host Environment Execution Disclosure:** Docker is not installed on this host (`docker` command not recognized). Container configurations (`docker-compose.yml`, `backend/Dockerfile`, `frontend/Dockerfile`, `nginx.conf`) were statically validated, and deployed workflows were verified using FastAPI's ASGI client against production configurations. Actual container daemon execution must be performed on a Docker-enabled host prior to field demonstration.
@@ -779,13 +802,13 @@ Completes the controlled 11-step flood demonstration rehearsal, verifies deploye
 ### 1. Controlled Demonstration Rehearsal (11 Steps Verified)
 Automated and verified in [`backend/test_deployment_verification_m12.py`](backend/test_deployment_verification_m12.py):
 1. **Application & Map Load**: `GET /flood-hazards` loads verified polygon boundaries and severity layers.
-2. **Alerts & Timestamps**: `GET /disaster-alerts` outputs official source advisories with ISO timestamps.
+2. **Alerts & Timestamps**: `GET /disaster-alerts` outputs timestamped alert records with provenance; demo-mode records are simulated.
 3. **Multi-Tier Classification**: Distinguishes `AUTHORITATIVE`, `PUBLIC_UNVERIFIED`, `DEMO`, and `STALE` records.
 4. **Catalogue Facility Selection**: Retrieves Osmania General Hospital (`HYD-H-001`) with verified geographic coordinates.
 5. **Baseline Evacuation Route**: Generates shortest unconstrained route on Hyderabad OSM road network.
 6. **Hazard Avoidance Recalculation**: Reroutes around synthetic demonstration flooded road segments (`HAZARDS_AVOIDED`).
 7. **Severed Access Handling**: Returns `NO_SAFE_ROUTE` and empty geometry when all access links are submerged.
-8. **Provider Outage Resilience**: Handles simulated weather/alert provider failures with `DEGRADED` status while maintaining core application availability.
+8. **Provider Status**: Weather provider errors are surfaced; simulated weather is used only when the key is absent and demo mode permits it.
 9. **Hospital Truth-in-Data**: Operational status verified is `false` and capacity is `null` when live telemetry is unintegrated.
 10. **Coverage Safety Threshold**: Musi River basin queries strictly return `MODEL_UNSUPPORTED` (71.77 km from nearest gauge).
 11. **Administrative Access Control**: Rejects unauthorized dataset commits and verification promotions (`401`/`403`).
@@ -799,10 +822,10 @@ Automated and verified in [`backend/test_deployment_verification_m12.py`](backen
 - **Supervisor Sign-Off Checklist**: Documented in [`docs/deployment_and_operations_guide.md`](docs/deployment_and_operations_guide.md) Section 11, requiring technical supervisor verification of isolation from emergency dispatch, non-production credentials, observer pre-briefings, and discrepancy logging sheets.
 - **Docker Deployment Instructions**: Complete multi-container instructions provided for staging hosts with Docker Desktop / Docker Engine.
 
-### 4. Final Cumulative Test Suite: 345/345 Passing
-- **Milestone 12 & 13 Suite**: 19 passed, 0 failed in 28.50s ([`backend/test_deployment_verification_m12.py`](backend/test_deployment_verification_m12.py))
-- **Total Backend Suite**: **345 passed**, 0 failed, 1256 warnings in 184.87s (`python -m pytest -q`)
-- **Frontend Production Build**: Clean build in 295ms (71 client modules) (`npm run build`)
+### 4. Final Cumulative Test Suite
+The repository does not embed a permanent pass count. Run the reproducible commands in
+the testing section and record the resulting passed/failed/skipped totals for the
+specific checkout and provisioned artifacts being evaluated.
 
 ---
 
@@ -813,7 +836,7 @@ Automated and verified in [`backend/test_deployment_verification_m12.py`](backen
 - **Five-Minute Demonstration Script**: [`docs/final_demo_script.md`](docs/final_demo_script.md) — Timed presentation protocol for evaluators.
 - **Submission & Verification Checklist**: [`docs/final_submission_checklist.md`](docs/final_submission_checklist.md) — Verified screenshot inventory, security audit, and test matrices.
 - **Deployment & Operations Guide**: [`docs/deployment_and_operations_guide.md`](docs/deployment_and_operations_guide.md) — Docker and production configuration manual.
-- **Screenshot Inventory**: [`docs/screenshots/`](docs/screenshots/) — 15 verified browser screenshots captured via Chrome CDP.
+- **Screenshot Inventory**: [`docs/screenshots/`](docs/screenshots/) — 7 verified browser screenshots captured via Chrome CDP.
 
 ### 2. Active Local URLs
 | Endpoint | Local URL | Description |

@@ -104,8 +104,8 @@ def test_evacuation_route_api():
     response = client.post("/evacuation-route", json=payload)
     if response.status_code == 200:
         data = response.json()
-        assert data["route_status"] in ["ROUTE_AVAILABLE", "NO_ROUTE", "DESTINATION_OUTSIDE_NETWORK"]
-        assert data["road_condition_status"] in ["CLEAR", "HAZARDS_AVOIDED", "UNKNOWN"]
+        assert data["route_status"] in ["ROUTE_AVAILABLE", "NO_ROUTE", "NO_SAFE_ROUTE", "DESTINATION_OUTSIDE_NETWORK"]
+        assert data["road_condition_status"] in ["CLEAR", "HAZARDS_AVOIDED", "BLOCKED", "UNKNOWN"]
 
 
 # =========================================================================

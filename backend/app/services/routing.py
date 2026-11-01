@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 import logging
+import threading
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 import networkx as nx
@@ -25,6 +26,47 @@ logger = logging.getLogger(__name__)
 MAX_SNAP_DISTANCE_KM = 5.0
 MAX_HAZARD_SNAP_DISTANCE_M = 150.0
 HAZARD_STATUSES = {"BLOCKED", "FLOODED", "DANGEROUS"}
+_hazard_eval_cache_lock = threading.Lock()
+_hazard_eval_cache: Dict[Tuple[Any, ...], Tuple[Set[Tuple[int, int, int]], Dict[Tuple[int, int, int], float], List[str], List[str], Set[str], bool]] = {}
+
+
+def _hazard_cache_key(G: nx.MultiDiGraph, hazards: List[Any], policy: HazardPolicy) -> Tuple[Any, ...]:
+    """Build a stable key for the expensive graph-wide hazard intersection pass."""
+    records = []
+    for hazard in hazards or []:
+        records.append((
+            getattr(hazard, "hazard_id", getattr(hazard, "id", None)),
+            getattr(hazard, "last_retrieved", None),
+            getattr(hazard, "publication_time", None),
+            getattr(hazard, "severity", None),
+            getattr(hazard, "is_active", None),
+            getattr(hazard, "data_status", None),
+        ))
+    return (
+        id(G),
+        policy.hard_block_confirmed_severe,
+        policy.historical_penalty_factor,
+        policy.unverified_penalty_factor,
+        tuple(sorted(repr(record) for record in records)),
+    )
+
+
+def _evaluate_hazards_cached(
+    G: nx.MultiDiGraph,
+    hazards: List[Any],
+    policy: HazardPolicy,
+) -> Tuple[Set[Tuple[int, int, int]], Dict[Tuple[int, int, int], float], List[str], List[str], Set[str], bool]:
+    cache_key = _hazard_cache_key(G, hazards, policy)
+    with _hazard_eval_cache_lock:
+        cached = _hazard_eval_cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    evaluated = evaluate_road_network_hazards(G, hazards=hazards, policy=policy)
+    with _hazard_eval_cache_lock:
+        _hazard_eval_cache.clear()
+        _hazard_eval_cache[cache_key] = evaluated
+    return evaluated
 
 
 def match_road_conditions(
@@ -215,7 +257,7 @@ def build_graph_route(
     avoided_hazards: List[str] = []
 
     if hazards:
-        poly_blocked, poly_penalties, poly_avoided, poly_caution, poly_sources, poly_stale = evaluate_road_network_hazards(
+        poly_blocked, poly_penalties, poly_avoided, poly_caution, poly_sources, poly_stale = _evaluate_hazards_cached(
             G,
             hazards=hazards,
             policy=policy,

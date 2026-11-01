@@ -60,20 +60,19 @@ All application behavior is configured through environment variables. Configurat
 | `DATABASE_POOL_SIZE` | `integer` | `5` | `1` to `50` | Database connection pool capacity. |
 | `ADMIN_API_KEY` | `string` | `safemap-admin-dev-key` | Secret string ($\ge 24$ chars) | **Secret.** Grants administrative rights to commit institutional datasets and promote facility verification states. |
 | `ANALYST_API_KEY` | `string` | `safemap-analyst-dev-key` | Secret string ($\ge 24$ chars) | **Secret.** Grants analyst rights for dry-run intake validation, source catalogue review, and intake logs. |
-| `WEATHER_API_KEY` | `string` | `""` (Empty) | OpenWeather Key | Optional live weather provider key. If omitted or timing out, system falls back gracefully. |
-| `GOOGLE_MAPS_API_KEY` | `string` | `""` (Empty) | Google API Key | Optional server-side geocoding key. |
+| `WEATHER_API_KEY` | `string` | `""` (Empty) | OpenWeather Key | Optional live weather provider key. If absent and `DEMO_MODE=true`, simulated weather is used and labeled; provider errors return an error. |
+| `GOOGLE_MAPS_API_KEY` | `string` | `""` (Empty) | Reserved/unused | The app uses Leaflet/OSM and public Google Maps directions URLs without this key. |
 | `CORS_ORIGINS` | `list` / `str` | `["http://localhost:5173", ...]` | JSON array or comma-separated string | Permitted frontend origins. Set to explicit production domain in deployment. |
 | `LOG_LEVEL` | `string` | `INFO` | `DEBUG`, `INFO`, `WARNING`, `ERROR` | Minimum threshold for log output. |
 | `LOG_FORMAT` | `string` | `json` | `json`, `text` | Structured JSON recommended for production log aggregation systems. |
-| `FLOOD_DATASET_PATH` | `string` | `ml/data/flood_dataset.csv` | Relative path | Training dataset reference. |
-| `FLOOD_MODEL_PATH` | `string` | `ml/models/flood_risk_model.joblib`| Relative path | Model serialization artifact path. |
+| `FLOOD_MODEL_PATH` | `string` | `ml/models/flood_severity_model.joblib`| Relative path | Runtime model serialization artifact path. Training uses `data/processed/indofloods_ml_dataset.csv` via `ml/train_indofloods.py`. |
 
 ### Frontend Environment Variables (`frontend/.env`)
 
 | Variable Name | Type | Default | Operational Purpose |
 |:---|:---|:---|:---|
 | `VITE_API_BASE_URL` | `string` | `http://127.0.0.1:8000` | Target URL of the SafeMap AI FastAPI backend service. |
-| `VITE_GOOGLE_MAPS_API_KEY` | `string` | `""` (Empty) | Client-side tile key. If empty, Leaflet defaults to OpenStreetMap tiles. **Never place private backend keys here.** |
+| `VITE_GOOGLE_MAPS_API_KEY` | `string` | `""` (Empty) | Reserved/unused. Leaflet uses OpenStreetMap tiles and public Google Maps directions URLs do not require this key. **Never place private backend keys here.** |
 
 ---
 
@@ -447,5 +446,3 @@ Prior to conducting a supervised demonstration before municipal observers (GHMC 
 **Supervisor Signature / Identifier:** _______________________  
 **Date & Location:** _______________________  
 **Municipal Liaison:** _______________________  
-
-

@@ -31,8 +31,8 @@ def evaluate_model(dataset_path: str | Path, model_path: str | Path, test_size: 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate the saved flood risk model.")
-    parser.add_argument("--dataset", default="ml/data/flood_dataset.csv")
-    parser.add_argument("--model", default="ml/models/flood_risk_model.joblib")
+    parser.add_argument("--dataset", default="data/processed/indofloods_ml_dataset.csv")
+    parser.add_argument("--model", default="ml/models/flood_severity_model.joblib")
     args = parser.parse_args()
     print(evaluate_model(args.dataset, args.model))
 

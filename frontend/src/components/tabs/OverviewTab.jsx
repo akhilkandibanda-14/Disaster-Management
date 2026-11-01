@@ -16,8 +16,10 @@ export default function OverviewTab({
   alerts,
   hazardWarning,
   onCalculateRoute,
+  onOpenNavigation,
   isRouting,
   onLocationSelect,
+  onMyLocation,
   onNavigateToTab,
   isSevereWeather = false,
   isDemoMode = false,
@@ -25,6 +27,7 @@ export default function OverviewTab({
   incidents = []
 }) {
   const [searchQuery, setSearchQuery] = useState('')
+  const [gpsLoading, setGpsLoading] = useState(false)
   const [activeLayers, setActiveLayers] = useState({
     risk: true,
     shelters: true,
@@ -68,6 +71,34 @@ export default function OverviewTab({
     if (match) {
       onLocationSelect({ latitude: match.lat, longitude: match.lon })
     }
+  }
+
+  // "My Location" button: requests real GPS then zooms the map in
+  const handleMyLocation = () => {
+    if (onMyLocation) {
+      // App-level handler: acquires GPS, updates dashboard, moves map
+      onMyLocation()
+      return
+    }
+    // Inline fallback if prop not provided
+    if (!navigator.geolocation) {
+      onLocationSelect({ latitude: 17.385, longitude: 78.4867 })
+      return
+    }
+    setGpsLoading(true)
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGpsLoading(false)
+        const coords = { latitude: pos.coords.latitude, longitude: pos.coords.longitude }
+        const inHyd = coords.latitude >= 17.2 && coords.latitude <= 17.6 && coords.longitude >= 78.2 && coords.longitude <= 78.7
+        onLocationSelect(inHyd ? coords : { latitude: 17.385, longitude: 78.4867 })
+      },
+      () => {
+        setGpsLoading(false)
+        onLocationSelect({ latitude: 17.385, longitude: 78.4867 })
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+    )
   }
 
   return (
@@ -142,10 +173,12 @@ export default function OverviewTab({
                 <button
                   type="button"
                   className="map-action-pill-btn"
-                  onClick={() => onLocationSelect({ latitude: 17.385, longitude: 78.4867 })}
-                  title="Recenter to Hyderabad Municipal Center"
+                  onClick={handleMyLocation}
+                  disabled={gpsLoading}
+                  title="Go to your current GPS location"
                 >
-                  <span aria-hidden="true">📍</span> {t.myLocation || 'My Location'}
+                  <span aria-hidden="true">{gpsLoading ? '⏳' : '📍'}</span>{' '}
+                  {gpsLoading ? 'Locating...' : (t.myLocation || 'My Location')}
                 </button>
                 <div className="map-mode-toggle">
                   <button 
@@ -392,6 +425,15 @@ export default function OverviewTab({
                       <span>{t.calculateRoute || 'Calculate Evacuation Route'}</span>
                     </>
                   )}
+                </button>
+                <button
+                  type="button"
+                  className="btn-external-navigation"
+                  onClick={onOpenNavigation}
+                  disabled={!nearestFacility}
+                >
+                  <span aria-hidden="true">🧭</span>
+                  Navigate to this safety location
                 </button>
 
                 {/* Route Result Panel */}

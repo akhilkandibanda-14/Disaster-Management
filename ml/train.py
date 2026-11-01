@@ -51,7 +51,7 @@ def main():
     # -----------------------------------
     # 1. LOAD DATA
     # -----------------------------------
-    DATA_PATH = "ml/data/flood_risk_dataset_india(1).csv"
+    DATA_PATH = "data/processed/indofloods_ml_dataset.csv"
     print(f"Loading data from {DATA_PATH}...")
     df = pd.read_csv(DATA_PATH)
     
@@ -184,7 +184,7 @@ def main():
     # -----------------------------------
     # 10. SAVE MODEL
     # -----------------------------------
-    MODEL_PATH = "ml/models/flood_risk_model.joblib"
+    MODEL_PATH = "ml/models/flood_severity_model.joblib"
     output_path = Path(MODEL_PATH)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     

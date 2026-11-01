@@ -2,8 +2,20 @@ import React, { useState, useEffect } from 'react'
 import { CircleMarker, MapContainer, Polygon, Polyline, Popup, TileLayer, ZoomControl, useMap, useMapEvents } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 
-function MapAutoResizer({ routePositions, centerCoords }) {
+const riskColors = {
+  HIGH: '#ef4444',
+  MEDIUM: '#f59e0b',
+  LOW: '#10b981'
+}
+
+function MapAutoResizer({ routePositions, centerCoords, flyZoom = 15 }) {
   const map = useMap()
+  const routeKey = routePositions.length > 1
+    ? routePositions.map(([lat, lon]) => `${lat},${lon}`).join('|')
+    : ''
+  const centerKey = centerCoords
+    ? `${centerCoords.latitude},${centerCoords.longitude}`
+    : ''
 
   useEffect(() => {
     if (!map) return
@@ -50,9 +62,11 @@ function MapAutoResizer({ routePositions, centerCoords }) {
         // Safe fallback
       }
     } else if (centerCoords) {
-      map.flyTo([centerCoords.latitude, centerCoords.longitude], map.getZoom(), { duration: 1.0 })
+      // Always zoom to at least flyZoom; don't zoom out if already further in
+      const targetZoom = Math.max(flyZoom, map.getZoom())
+      map.flyTo([centerCoords.latitude, centerCoords.longitude], targetZoom, { duration: 1.2 })
     }
-  }, [map, routePositions, centerCoords])
+  }, [map, routeKey, centerKey, flyZoom])
 
   return null
 }
@@ -152,7 +166,8 @@ export default function RiskMap({
   activeLayers,
   tileMode: externalTileMode,
   onTileModeChange,
-  incidents = []
+  incidents = [],
+  flyZoom = 15
 }) {
   const [hasTileError, setHasTileError] = useState(false)
   const [internalTileMode, setInternalTileMode] = useState('street')
@@ -282,9 +297,30 @@ export default function RiskMap({
         zoomControl={false}
       >
         <ZoomControl position="topright" />
-        <MapAutoResizer routePositions={routePositions} centerCoords={location} />
+        <MapAutoResizer routePositions={routePositions} centerCoords={location} flyZoom={flyZoom} />
         <MapClickHandler onLocationSelect={onLocationSelect} />
         <MapTileLayer tileMode={currentTileMode} onTileErrorChange={setHasTileError} />
+
+        {/* Geographic risk result */}
+        {showHazards && riskData?.prediction_available && riskData.risk_level && (
+          <CircleMarker
+            center={[riskData.latitude, riskData.longitude]}
+            pathOptions={{
+              color: riskColors[riskData.risk_level] || '#94a3b8',
+              fillColor: riskColors[riskData.risk_level] || '#94a3b8',
+              fillOpacity: 0.3,
+              weight: 2
+            }}
+            radius={30}
+          >
+            <Popup>
+              <strong>{riskData.risk_level} flood risk</strong>
+              <div style={{ fontSize: '11px', marginTop: '4px' }}>
+                Geographic risk result for the selected location
+              </div>
+            </Popup>
+          </CircleMarker>
+        )}
 
         {/* User Location Marker & Accuracy Halo */}
         {location && (
@@ -428,36 +464,79 @@ export default function RiskMap({
         })}
 
         {/* Road Conditions */}
-        {showRoads && roads && roads.map((road) => {
-          if (!road.geometry || !road.geometry.coordinates) return null
-          const isBlockedRoad = road.condition_status === 'BLOCKED' || road.condition_status === 'IMPASSABLE'
-          const roadColor = isBlockedRoad ? '#ef4444' : '#10b981'
-          const positions = road.geometry.coordinates.map(([lon, lat]) => [lat, lon])
+        {showRoads && roads && roads.map((road, idx) => {
+          const statusStr = (road.status || road.condition_status || '').toUpperCase()
+          const isBlockedRoad = statusStr === 'BLOCKED' || statusStr === 'IMPASSABLE' || statusStr === 'FLOODED' || statusStr === 'DANGEROUS'
+          const isOpen = statusStr === 'OPEN' || statusStr === 'CLEAR'
+          const roadColor = isBlockedRoad ? '#ef4444' : isOpen ? '#10b981' : '#f59e0b'
+          const roadKey = road.road_id || road.id || `road-${idx}`
 
-          return (
-            <Polyline
-              key={road.road_id}
-              positions={positions}
-              pathOptions={{
-                color: roadColor,
-                weight: isBlockedRoad ? 4 : 2,
-                opacity: 0.8,
-                dashArray: isBlockedRoad ? '4, 4' : undefined
-              }}
-            >
-              <Popup>
-                <div style={{ minWidth: '180px' }}>
-                  <strong>{road.road_name || 'Road Segment'}</strong>
-                  <div style={{ fontSize: '11px', margin: '4px 0' }}>
-                    Status: <span style={{ color: roadColor, fontWeight: 'bold' }}>{road.condition_status}</span>
+          // Case 1: road has geometry polyline coordinates
+          if (road.geometry?.coordinates && road.geometry.coordinates.length > 1) {
+            const positions = road.geometry.coordinates.map(([lon, lat]) => [lat, lon])
+            return (
+              <Polyline
+                key={roadKey}
+                positions={positions}
+                pathOptions={{
+                  color: roadColor,
+                  weight: isBlockedRoad ? 4 : 2,
+                  opacity: 0.85,
+                  dashArray: isBlockedRoad ? '6, 4' : undefined
+                }}
+              >
+                <Popup>
+                  <div style={{ minWidth: '180px' }}>
+                    <strong>{road.road_name || 'Road Segment'}</strong>
+                    <div style={{ fontSize: '11px', margin: '4px 0' }}>
+                      Status: <span style={{ color: roadColor, fontWeight: 'bold' }}>{statusStr || 'UNKNOWN'}</span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                      {road.notes || road.verification_note || 'Road condition report.'}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '11px', color: '#94a3b8' }}>
-                    {road.verification_note || 'Static OpenStreetMap network assessment.'}
+                </Popup>
+              </Polyline>
+            )
+          }
+
+          // Case 2: point-based road hazard (lat/lon only — demo data & incident-reported roads)
+          if (road.latitude != null && road.longitude != null) {
+            return (
+              <CircleMarker
+                key={roadKey}
+                center={[road.latitude, road.longitude]}
+                pathOptions={{
+                  color: '#ffffff',
+                  fillColor: roadColor,
+                  fillOpacity: 0.9,
+                  weight: 2
+                }}
+                radius={isBlockedRoad ? 9 : 6}
+              >
+                <Popup>
+                  <div style={{ minWidth: '180px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                      <strong>{road.road_name || 'Road Point'}</strong>
+                      <span style={{
+                        fontSize: '10px',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        background: isBlockedRoad ? 'rgba(239,68,68,0.2)' : 'rgba(16,185,129,0.2)',
+                        color: roadColor,
+                        fontWeight: 'bold'
+                      }}>{statusStr || 'UNKNOWN'}</span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#94a3b8' }}>
+                      {road.notes || road.verification_note || 'Road condition report.'}
+                    </div>
                   </div>
-                </div>
-              </Popup>
-            </Polyline>
-          )
+                </Popup>
+              </CircleMarker>
+            )
+          }
+
+          return null
         })}
 
         {/* Facilities & Shelters */}
@@ -536,6 +615,7 @@ export default function RiskMap({
 
         {/* Citizen Incident Reports Layer */}
         {showIncidents && incidents && incidents.map((inc) => {
+          if (inc.latitude == null || inc.longitude == null) return null
           const isVerified = inc.verification_status === 'VERIFIED_MUNICIPAL'
           const isPending = inc.verification_status === 'PENDING_REVIEW'
           const isResolved = inc.verification_status === 'RESOLVED'
@@ -543,7 +623,7 @@ export default function RiskMap({
           
           return (
             <CircleMarker
-              key={inc.incident_id || `${inc.latitude}-${inc.longitude}`}
+              key={inc.incident_id || inc.id || `${inc.latitude}-${inc.longitude}`}
               center={[inc.latitude, inc.longitude]}
               pathOptions={{
                 color: '#ffffff',

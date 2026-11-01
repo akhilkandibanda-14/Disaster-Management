@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Header from './components/Header'
 import SOSModal from './components/SOSModal'
 import AIAssistantChat from './components/AIAssistantChat'
@@ -36,62 +36,12 @@ const defaultInitialShelter = {
   data_status: "VERIFIED_FLOOD_SHELTER"
 }
 
-export const demoScenarios = [
-  {
-    id: 'musi-causeway',
-    name: 'Musi River Central Causeway Flash Inundation',
-    shortName: 'Musi River Causeway',
-    location: { latitude: 17.3820, longitude: 78.4910 },
-    locationStatus: 'DEMO MODE — Musi River Causeway Inundation Zone',
-    hazardZoneName: 'Musi River Central Causeway Inundation Corridor (HYD-FZ-001)',
-    severity: 'HIGH',
-    rainfallMm: 85.0,
-    musiLevel: '4.85m (Critical Causeway Crest)',
-    simulatedIncident: {
-      incident_id: 'DEMO-INC-001',
-      title: '[DEMO] Simulated Roadway Submergence at Chaderghat Causeway',
-      description: '[DEMO ONLY] Simulated report: 0.85m water overtopping causeway. Arterial road blocked.',
-      severity: 'CRITICAL',
-      status: 'SIMULATED_DEMO',
-      is_demo: true,
-      latitude: 17.3820,
-      longitude: 78.4910,
-      source: 'SIMULATED DEMO EMERGENCY'
-    }
-  },
-  {
-    id: 'begumpet-canal',
-    name: 'Lower Begumpet Storm-Water Canal Backwater',
-    shortName: 'Begumpet Storm Canal',
-    location: { latitude: 17.4420, longitude: 78.4750 },
-    locationStatus: 'DEMO MODE — Begumpet Drainage Bottleneck Corridor',
-    hazardZoneName: 'Simulated Flash Flood Zone - Begumpet (DEMO-HAZ-001)',
-    severity: 'HIGH',
-    rainfallMm: 95.0,
-    musiLevel: '3.60m (Elevated Storm Runoff)',
-    simulatedIncident: {
-      incident_id: 'DEMO-INC-002',
-      title: '[DEMO] Simulated Culvert Backwater at Rasoolpura',
-      description: '[DEMO ONLY] Simulated report: Nala breach causing street waterlogging near railway underbridge.',
-      severity: 'HIGH',
-      status: 'SIMULATED_DEMO',
-      is_demo: true,
-      latitude: 17.4420,
-      longitude: 78.4750,
-      source: 'SIMULATED DEMO EMERGENCY'
-    }
-  }
-]
-
 export default function App() {
   const [activeTab, setActiveTab] = useState('citizen')
   const [language, setLanguage] = useState('en')
   const [isSevereWeather, setIsSevereWeather] = useState(false)
   const [highContrast, setHighContrast] = useState(false)
   const [isSosOpen, setIsSosOpen] = useState(false)
-  const [isDemoMode, setIsDemoMode] = useState(false)
-  const [preDemoState, setPreDemoState] = useState(null)
-  const [demoScenarioIndex, setDemoScenarioIndex] = useState(0)
 
   const [apiStatus, setApiStatus] = useState('Checking API...')
   const [location, setLocation] = useState(hyderabadLocation)
@@ -113,6 +63,7 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [isRouting, setIsRouting] = useState(false)
   const [error, setError] = useState('')
+  const hasManualLocationSelection = useRef(false)
 
   const t = translations[language] || translations.en
 
@@ -152,7 +103,7 @@ export default function App() {
         request(`/risk-map?${query}`).catch(() => null),
         request(`/shelters/recommended?${recQuery}`).catch(() => null),
         request('/shelters').catch(() => ({ shelters: [] })),
-        request('/emergency-services').catch(() => []),
+        request(`/emergency-facilities?facility_type=HOSPITAL&${query}&radius_km=15`).catch(() => ({ facilities: [] })),
         request('/disaster-alerts').catch(() => []),
         request('/road-conditions').catch(() => []),
         request('/gauges').catch(() => []),
@@ -175,13 +126,13 @@ export default function App() {
         distance_km: s.distance_km || 2.3
       }))
       
-      const rawServices = Array.isArray(emergencyServices) ? emergencyServices : (emergencyServices?.services || [])
+      const rawServices = emergencyServices?.facilities || []
       const allServices = rawServices.map(e => ({
         ...e,
-        facility_type: e.type ? e.type.toUpperCase() : 'HOSPITAL',
+        facility_type: e.facility_type ? e.facility_type.toUpperCase() : 'HOSPITAL',
         id: e.id || e.service_id,
         name: e.name,
-        distance_km: e.distance_km || 3.1
+        distance_km: e.distance_km
       }))
       
       const combinedFacilities = allShelters.length > 0 ? [...allShelters, ...allServices] : [defaultInitialShelter, ...allServices]
@@ -196,7 +147,7 @@ export default function App() {
       
       setAlerts(alertData || [])
       setRoads(roadList || [])
-      setGauges(gaugeList || [])
+      setGauges(gaugeList?.gauges || gaugeList || [])
       setHydrology(hydroData)
       setFloodHazards(hazardData?.hazards || [])
       setHazardWarning(locationWarningData)
@@ -209,30 +160,13 @@ export default function App() {
     }
   }
 
-  // Initial dashboard load & optional Geolocation setup on mount
+  // Resolve the browser location on every page load before loading dashboard data.
   useEffect(() => {
-    // Load immediately with Hyderabad center location
-    loadDashboard(hyderabadLocation)
-
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const currentLocation = { latitude: position.coords.latitude, longitude: position.coords.longitude }
-          if (isInHyderabad(currentLocation)) {
-            setLocation(currentLocation)
-            setLocationStatus('Live location active')
-            loadDashboard(currentLocation)
-          }
-        },
-        () => {
-          // Graceful fallback to default Hyderabad location
-        },
-        { enableHighAccuracy: true, timeout: 4000, maximumAge: 60000 },
-      )
-    }
+    refreshLocation()
   }, [])
 
   const handleLocationSelect = (newLocation) => {
+    hasManualLocationSelection.current = true
     setLocation(newLocation)
     setLocationStatus('Selected coordinates active')
     loadDashboard(newLocation)
@@ -261,8 +195,9 @@ export default function App() {
       const payload = { 
         origin: { latitude: location.latitude, longitude: location.longitude },
         destination: { latitude: destLat, longitude: destLon },
-        compute_alternatives: true
+        compute_alternatives: false
       }
+
       if (facId) {
         payload.facility_id = String(facId)
       }
@@ -280,8 +215,21 @@ export default function App() {
     }
   }
 
+  const openExternalNavigation = (facility = selectedFacility) => {
+    if (!facility || facility.latitude == null || facility.longitude == null) {
+      setError('This safety location does not have valid coordinates for navigation.')
+      return
+    }
+
+    const origin = `${location.latitude},${location.longitude}`
+    const destination = `${facility.latitude},${facility.longitude}`
+    const mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=driving`
+    window.open(mapsUrl, '_blank', 'noopener,noreferrer')
+  }
+
   const refreshLocation = () => {
     setError('')
+    hasManualLocationSelection.current = false
     if (!navigator.geolocation) {
       setLocationStatus('Location unavailable - center active')
       loadDashboard(hyderabadLocation)
@@ -292,105 +240,22 @@ export default function App() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const currentLocation = { latitude: position.coords.latitude, longitude: position.coords.longitude }
+        setLocation(currentLocation)
         if (isInHyderabad(currentLocation)) {
-          setLocation(currentLocation)
           setLocationStatus('Live location active')
           loadDashboard(currentLocation)
           return
         }
-        setLocationStatus('Outside Hyderabad - center active')
-        loadDashboard(hyderabadLocation)
+        setLocationStatus('Live location active · Hyderabad data services unavailable outside coverage')
+        loadDashboard(currentLocation)
       },
       () => {
         setLocationStatus('Location unavailable - center active')
+        setLocation(hyderabadLocation)
         loadDashboard(hyderabadLocation)
       },
       { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 },
     )
-  }
-
-  const handleStartDemoMode = async (scenarioIdx = 0) => {
-    const scenario = demoScenarios[scenarioIdx] || demoScenarios[0]
-    setDemoScenarioIndex(scenarioIdx)
-
-    if (!isDemoMode) {
-      setPreDemoState({
-        location,
-        locationStatus,
-        isSevereWeather,
-        activeTab,
-        selectedFacility,
-        route,
-        incidents
-      })
-    }
-
-    setIsDemoMode(true)
-    setIsSevereWeather(true)
-    setLocation(scenario.location)
-    setLocationStatus(scenario.locationStatus)
-
-    // Load actual hazard, weather, and facility telemetry for this demo coordinate
-    await loadDashboard(scenario.location)
-
-    // Append clearly marked simulated incident
-    setIncidents(prev => {
-      const clean = (prev || []).filter(inc => !inc.is_demo)
-      return [scenario.simulatedIncident, ...clean]
-    })
-
-    // Demonstrate evacuation routing workflow from the demo emergency location to nearest shelter
-    try {
-      const targetFacility = selectedFacility || defaultInitialShelter
-      const facId = targetFacility.facility_id || targetFacility.id || targetFacility.shelter_id
-      const payload = {
-        origin: { latitude: scenario.location.latitude, longitude: scenario.location.longitude },
-        destination: { latitude: targetFacility.latitude ?? 17.416844, longitude: targetFacility.longitude ?? 78.464475 },
-        compute_alternatives: true
-      }
-      if (facId) {
-        payload.facility_id = String(facId)
-      }
-      setIsRouting(true)
-      const routeData = await request('/evacuation-route', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
-      setRoute(routeData)
-    } catch (routeErr) {
-      setError(routeErr.message)
-    } finally {
-      setIsRouting(false)
-    }
-  }
-
-  const handleExitDemoMode = () => {
-    setIsDemoMode(false)
-    if (preDemoState) {
-      setLocation(preDemoState.location)
-      setLocationStatus(preDemoState.locationStatus)
-      setIsSevereWeather(preDemoState.isSevereWeather)
-      setSelectedFacility(preDemoState.selectedFacility)
-      setRoute(preDemoState.route)
-      setIncidents(preDemoState.incidents || [])
-      loadDashboard(preDemoState.location)
-    } else {
-      setLocation(hyderabadLocation)
-      setLocationStatus('Hyderabad center location')
-      setIsSevereWeather(false)
-      setRoute(null)
-      loadDashboard(hyderabadLocation)
-    }
-    setPreDemoState(null)
-  }
-
-  const handleToggleDemoMode = () => {
-    if (isDemoMode) {
-      handleExitDemoMode()
-    } else {
-      handleStartDemoMode(0)
-    }
   }
 
   return (
@@ -406,69 +271,10 @@ export default function App() {
         highContrast={highContrast}
         onToggleHighContrast={() => setHighContrast(!highContrast)}
         onOpenSOS={() => setIsSosOpen(true)}
-        apiStatus={isDemoMode ? 'API Online · Simulated Emergency Demo' : apiStatus}
+        apiStatus={apiStatus}
         alertsCount={alerts.length}
-        isDemoMode={isDemoMode}
-        onToggleDemoMode={handleToggleDemoMode}
         t={t}
       />
-
-      {/* Prominent Demo Mode Simulated Emergency Indicator Banner */}
-      {isDemoMode && (
-        <aside 
-          id="demo-mode-indicator-banner" 
-          className="demo-mode-indicator-banner"
-          role="region"
-          aria-label="Demo Mode - Simulated Emergency Demonstration"
-        >
-          <div className="demo-indicator-content">
-            <div className="demo-indicator-header">
-              <span className="demo-indicator-live-pill" aria-hidden="true">
-                <span className="demo-pulsing-dot" />
-                SIMULATION ACTIVE
-              </span>
-              <h2 className="demo-indicator-title">
-                DEMO MODE — SIMULATED EMERGENCY
-              </h2>
-            </div>
-
-            <div className="demo-indicator-body">
-              <p className="demo-indicator-disclaimer">
-                <strong>ACADEMIC &amp; EMERGENCY SERVICES DEMONSTRATION:</strong> All alerts, high-water advisories, and incident markers shown in this mode are <em>simulated test data</em> for Hyderabad flood decision-support evaluation. <strong>No real emergency services (112 / GHMC) have been contacted, and no private geolocation data is transmitted.</strong>
-              </p>
-              
-              <div className="demo-scenario-controls">
-                <span className="demo-controls-label">SIMULATED SCENARIO:</span>
-                <div className="demo-scenario-pills">
-                  {demoScenarios.map((sc, idx) => (
-                    <button
-                      key={sc.id}
-                      type="button"
-                      className={`demo-scenario-btn ${demoScenarioIndex === idx ? 'active' : ''}`}
-                      onClick={() => handleStartDemoMode(idx)}
-                      title={`Switch demo scenario to ${sc.name}`}
-                    >
-                      {sc.shortName}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="demo-indicator-action">
-              <button
-                type="button"
-                id="exit-demo-mode-btn"
-                className="demo-exit-btn"
-                onClick={handleExitDemoMode}
-                aria-label="Exit Demo Mode"
-              >
-                <span aria-hidden="true">✕</span> Exit Demo
-              </button>
-            </div>
-          </div>
-        </aside>
-      )}
 
       {error && (
         <div className="app-error-banner" role="alert">
@@ -495,11 +301,12 @@ export default function App() {
             alerts={alerts}
             hazardWarning={hazardWarning}
             onCalculateRoute={() => calculateRouteForFacility(selectedFacility)}
+            onOpenNavigation={() => openExternalNavigation(selectedFacility)}
             isRouting={isRouting}
             onLocationSelect={handleLocationSelect}
+            onMyLocation={refreshLocation}
             onNavigateToTab={setActiveTab}
             isSevereWeather={isSevereWeather}
-            isDemoMode={isDemoMode}
             t={t}
             incidents={incidents}
           />
@@ -534,6 +341,8 @@ export default function App() {
             loading={loading}
             isRouting={isRouting}
             onCalculateRoute={() => calculateRouteForFacility(selectedFacility)}
+            onOpenNavigation={() => openExternalNavigation(selectedFacility)}
+            onMyLocation={refreshLocation}
             onLocationSelect={handleLocationSelect}
             incidents={incidents}
           />
@@ -595,18 +404,14 @@ export default function App() {
 
       {/* Floating AI Safety Assistant in Bottom Right */}
       <AIAssistantChat
-        location={location}
-        locationStatus={locationStatus}
-        hazardWarning={hazardWarning}
-        route={route}
-        isSevereWeather={isSevereWeather}
-        isDemoMode={isDemoMode}
-        selectedFacility={selectedFacility}
-        facilities={facilities}
-        alerts={alerts}
         language={language}
-        apiBaseUrl={apiBaseUrl}
-        onNavigateToTab={setActiveTab}
+        riskData={riskData}
+        weather={weather}
+        alerts={alerts}
+        route={route}
+        shelters={shelters}
+        hazardWarning={hazardWarning}
+        location={location}
       />
 
       {/* Emergency SOS Modal */}

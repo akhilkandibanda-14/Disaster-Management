@@ -49,8 +49,7 @@ class Settings(BaseSettings):
     )
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     database_pool_size: int = 5
-    flood_dataset_path: str = "ml/data/flood_dataset.csv"
-    flood_model_path: str = "ml/models/flood_risk_model.joblib"
+    flood_model_path: str = "ml/models/flood_severity_model.joblib"
     log_level: str = "INFO"
     log_format: str = "text"
     api_host: str = "0.0.0.0"
@@ -132,4 +131,3 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
-

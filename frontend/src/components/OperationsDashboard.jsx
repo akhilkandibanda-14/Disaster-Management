@@ -11,6 +11,9 @@ const riskColors = {
 
 function MapAutoResizer({ routePositions }) {
   const map = useMap();
+  const routeKey = routePositions.length > 1
+    ? routePositions.map(([lat, lon]) => `${lat},${lon}`).join('|')
+    : '';
 
   useEffect(() => {
     if (!map) return;
@@ -57,7 +60,7 @@ function MapAutoResizer({ routePositions }) {
         // Safe fallback
       }
     }
-  }, [map, routePositions]);
+  }, [map, routeKey]);
 
   return null;
 }
@@ -236,12 +239,12 @@ function OperationsMap({ riskData, location, route, gauges, facilities, roads, f
       {/* Official Gauges */}
       {gauges && gauges.map(gauge => (
         <CircleMarker 
-          key={gauge.id} 
+          key={gauge.gauge_id || gauge.id}
           center={[gauge.latitude, gauge.longitude]} 
           pathOptions={{ color: '#f97316', fillColor: '#f97316', fillOpacity: 0.8, weight: 2 }} 
           radius={5}
         >
-          <Popup>Official Gauge: {gauge.id}</Popup>
+          <Popup>Official Gauge: {gauge.gauge_id || gauge.id}</Popup>
         </CircleMarker>
       ))}
 
@@ -580,12 +583,12 @@ export default function OperationsDashboard({
         </article>
 
         <article className="metric-card">
-          <span>ACTIVE ROAD HAZARDS</span>
+          <span>REPORTED ROAD CONDITIONS</span>
           <strong style={{ fontSize: '1.5rem', marginTop: '12px', color: blockedRoadsCount > 0 ? '#ef4444' : 'var(--success)' }}>
             {blockedRoadsCount}
           </strong>
-          <small>Hazard-Aware Routing: ACTIVE</small>
-          <small style={{display: 'block'}}>Excluded by router automatically</small>
+          <small>Hazard-aware routing evaluates these records</small>
+          <small style={{display: 'block', color: 'var(--warning)'}}>Demo records when DEMO_MODE is enabled</small>
         </article>
 
         <article className="metric-card">
@@ -593,8 +596,8 @@ export default function OperationsDashboard({
           <strong style={{ fontSize: '1.5rem', marginTop: '12px', color: authoritativeHazardsCount > 0 ? '#ef4444' : '#f59e0b' }}>
             {activeHazardsCount}
           </strong>
-          <small>Authoritative: {authoritativeHazardsCount} · Municipal: {activeHazardsCount - authoritativeHazardsCount}</small>
-          <small style={{display: 'block'}}>NDMA / GloFAS / GHMC</small>
+          <small>Authoritative: {authoritativeHazardsCount} · Other: {activeHazardsCount - authoritativeHazardsCount}</small>
+          <small style={{display: 'block'}}>Source provenance is shown per record</small>
         </article>
 
         <article className="metric-card warning">
@@ -623,7 +626,7 @@ export default function OperationsDashboard({
             <span><i className="legend-dot safe" style={{backgroundColor: '#10b981'}} />Shelter</span>
             <span><i className="legend-dot" style={{backgroundColor: '#a855f7'}} />Hospital</span>
             <span><i className="legend-dot" style={{backgroundColor: '#ef4444'}} />Road Hazard</span>
-            <span><i className="legend-dot" style={{backgroundColor: '#ef4444', border: '1px solid #fff'}} />Live Alert</span>
+            <span><i className="legend-dot" style={{backgroundColor: '#ef4444', border: '1px solid #fff'}} />Alert record</span>
             <span><i className="legend-dot" style={{backgroundColor: '#f59e0b'}} />Flood Zone</span>
             <span><i className="legend-dot route" style={{backgroundColor: '#38bdf8'}} />OSM Route</span>
             <span><i className="legend-dot" style={{backgroundColor: '#f59e0b'}} />Hazard Detour</span>
@@ -1271,4 +1274,3 @@ export default function OperationsDashboard({
     </section>
   );
 }
-

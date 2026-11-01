@@ -12,6 +12,8 @@ export default function RoutesTab({
   loading,
   isRouting,
   onCalculateRoute,
+  onOpenNavigation,
+  onMyLocation,
   onLocationSelect,
   incidents = []
 }) {
@@ -33,6 +35,14 @@ export default function RoutesTab({
           <div className="card-panel">
             <h2 className="panel-title">Evacuation Route Console</h2>
             <p className="panel-subtitle">Dijkstra shortest path calculated over OpenStreetMap Hyderabad network</p>
+            <button
+              type="button"
+              className="btn-text-small"
+              onClick={onMyLocation}
+              style={{ marginBottom: '12px' }}
+            >
+              Locate me and refresh nearby hospitals
+            </button>
 
             <div className="route-endpoints-box">
               <div className="endpoint-item">
@@ -78,6 +88,15 @@ export default function RoutesTab({
               ) : (
                 <>Plan Route on OSM Network</>
               )}
+            </button>
+            <button
+              type="button"
+              className="btn-external-navigation"
+              onClick={onOpenNavigation}
+              disabled={!selectedFacility}
+            >
+              <span aria-hidden="true">🧭</span>
+              Open turn-by-turn navigation in Google Maps
             </button>
 
             {/* Route Calculation Result */}
@@ -194,7 +213,11 @@ export default function RoutesTab({
             </div>
 
             <div className="routes-facilities-scroll">
-              {filteredFacilities.map((fac) => {
+              {filteredFacilities.length === 0 ? (
+                <p className="muted" style={{ padding: '12px 4px' }}>
+                  No nearby {filterType === 'HOSPITAL' ? 'hospitals' : filterType === 'SHELTER' ? 'shelters' : 'destination facilities'} found within 15 km.
+                </p>
+              ) : filteredFacilities.map((fac) => {
                 const isSelected = selectedFacility && (
                   (selectedFacility.facility_id && selectedFacility.facility_id === fac.facility_id) ||
                   (selectedFacility.id && selectedFacility.id === fac.id)
