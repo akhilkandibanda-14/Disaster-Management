@@ -21,7 +21,7 @@ def is_in_hyderabad(latitude: float, longitude: float) -> bool:
 
 class Settings(BaseSettings):
     app_env: str = "development"
-    demo_mode: bool = True
+    demo_mode: bool = False
     database_url: str = "postgresql+psycopg://postgres:postgres@localhost:5432/disaster_management"
     google_maps_api_key: str = ""
     weather_api_key: str = Field(

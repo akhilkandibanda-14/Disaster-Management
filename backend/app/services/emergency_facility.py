@@ -144,7 +144,14 @@ class EmergencyFacilityService:
         if not facility_id:
             return None
         all_facs = self.get_facilities(include_demo=True)
-        return next((f for f in all_facs if str(f.facility_id).upper() == str(facility_id).upper()), None)
+        found = next((f for f in all_facs if str(f.facility_id).upper() == str(facility_id).upper()), None)
+        if found:
+            return found
+        try:
+            from app.services.hospital_discovery import get_hospital_discovery_service
+            return get_hospital_discovery_service().get_hospital_by_id(facility_id)
+        except Exception:
+            return None
 
     def update_facility_verification(
         self,

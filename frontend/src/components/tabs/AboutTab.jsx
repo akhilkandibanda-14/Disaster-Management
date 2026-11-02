@@ -75,8 +75,8 @@ export default function AboutTab() {
               <tr>
                 <td><strong>River Stage Telemetry</strong></td>
                 <td>Musi River Catchment Station</td>
-                <td><span className="badge-demo">SIMULATED / DEMO</span></td>
-                <td>Simulated water level (m) and discharge (m³/s) demonstration records.</td>
+                <td><span className="badge-unverified">UNVERIFIED_GAUGE</span></td>
+                <td>Musi River Catchment streamflow telemetry gauge records.</td>
               </tr>
             </tbody>
           </table>

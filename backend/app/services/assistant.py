@@ -154,7 +154,7 @@ class AssistantService:
             return self._build_shelter_response(lang, context)
 
         # 6. TECHNICAL STATUS: MODEL_UNSUPPORTED & 50KM SAFEGUARD
-        if any(t in lower for t in ["model_unsupported", "unsupported", "50 km", "50km", "gauge", "insufficient_local_data", "సపోర్ట్", "గేజ్", "भविष्यवाणी"]):
+        if any(t in lower for t in ["model_unsupported", "unsupported", "coverage", "50 km", "50km", "gauge", "insufficient_local_data", "సపోర్ట్", "గేజ్", "కవరేజ్", "भविष्यवाणी", "कवरेज"]):
             return self._build_model_unsupported_response(lang)
 
         # 7. REPORTING BLOCKED ROADS & INCIDENTS
@@ -449,6 +449,7 @@ class AssistantService:
                 "SafeMap AI ఖచ్చితమైన 50.0 కి.మీ మోడల్ కవరేజ్ భద్రతను అమలు చేస్తుంది. "
                 "మెషిన్ లెర్నింగ్ మోడల్ అధికారిక INDOFLOODS నది గేజ్ స్టేషన్లపై శిక్షణ పొందింది. "
                 "హైదరాబాద్‌కు సమీపంలోని గేజ్ స్టేషన్ 71.8 కి.మీ దూరంలో మంజ్రా నదిపై (gauge-916) ఉంది. "
+                "ఈ స్థానం మోడల్ మద్దతు ఇచ్చే గేజ్ పరిధికి వెలుపల ఉంది. దీని అర్థం ఈ ప్రాంతం వరద-రహితం లేదా తక్కువ ప్రమాదం అని కాదు. "
                 "తప్పుడు లేదా కల్పిత వరద అంచనాలను నివారించడానికి, హైదరాబాద్ నగరానికి ML అంచనాలు సురక్షితంగా నిలిపివేయబడ్డాయి (MODEL_UNSUPPORTED)."
             )
         elif lang == "hi":
@@ -457,6 +458,7 @@ class AssistantService:
                 "SafeMap AI 50.0 किमी का सख्त मॉडल सुरक्षा प्रतिबंध लागू करता है। "
                 "हमारा मशीन लर्निंग मॉडल आधिकारिक INDOFLOODS रिवर गेज पर प्रशिक्षित है। "
                 "हैदराबाद से निकटतम गेज 71.8 किमी दूर मांजरा नदी पर (gauge-916) है। "
+                "यह स्थान मॉडल के समर्थित गेज कवरेज से बाहर है। इसका अर्थ यह नहीं है कि यह क्षेत्र बाढ़-मुक्त या कम जोखिम वाला है। "
                 "बिना आधार वाले काल्पनिक आंकड़े दिखाने से बचने के लिए, हैदराबाद के लिए स्वचालित भविष्यवाणियां रोकी गई हैं (MODEL_UNSUPPORTED)।"
             )
         else:
@@ -465,6 +467,7 @@ class AssistantService:
                 "SafeMap AI strictly enforces a 50.0 km model boundary safeguard. "
                 "The machine learning flood model is calibrated on official INDOFLOODS river gauge stations. "
                 "The nearest calibrated river gauge to Hyderabad is INDOFLOODS-gauge-916 located 71.8 km away on the Manjra River. "
+                "This location is outside the model's supported coverage. This status does not claim or imply that the location is flood-free or low risk. "
                 "To prevent unvalidated extrapolation, spatial hallucination, and data fabrication, automated ML inference is intentionally suppressed for Hyderabad."
             )
 

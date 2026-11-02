@@ -22,7 +22,6 @@ export default function OverviewTab({
   onMyLocation,
   onNavigateToTab,
   isSevereWeather = false,
-  isDemoMode = false,
   dashboardStatus = {},
   t = {},
   incidents = []
@@ -245,7 +244,7 @@ export default function OverviewTab({
                 className={`layer-pill ${activeLayers.shelters ? 'active shelters' : ''}`}
                 onClick={() => toggleLayer('shelters')}
               >
-                🏕️ {t.layerShelters || 'Safe Shelters'}
+                🏕️ {t.layerShelters || 'Shelter Candidates'}
               </button>
               <button
                 type="button"
@@ -317,14 +316,14 @@ export default function OverviewTab({
                 <span className="panel-icon" aria-hidden="true">🌧️</span>
                 <h2 className="panel-title-text">{t.radarTitle || 'HYDERABAD ATMOSPHERIC RADAR'}</h2>
               </div>
-              <span className={`radar-status-badge ${isDemoMode ? 'badge-demo' : isSevereWeather ? 'badge-severe' : isAvailable('weather') ? 'badge-normal' : 'badge-unknown'}`}>
-                {isDemoMode ? 'SIMULATED FLOOD [DEMO]' : isSevereWeather ? 'HEAVY FLOODING' : statusLabel('weather').toUpperCase()}
+              <span className={`radar-status-badge ${isSevereWeather ? 'badge-severe' : isAvailable('weather') ? 'badge-normal' : 'badge-unknown'}`}>
+                {isSevereWeather ? 'HEAVY FLOODING' : statusLabel('weather').toUpperCase()}
               </span>
             </div>
 
             <div className="radar-condition-line">
               <h3 className="condition-headline">
-                {isDemoMode ? `${currentCondition} [DEMO SIMULATION]` : currentCondition}
+                {currentCondition}
               </h3>
             </div>
 
@@ -344,7 +343,7 @@ export default function OverviewTab({
                   <span className="tile-label">{t.rainfall || 'Rainfall'}</span>
                 </div>
                 <strong className={`tile-value ${isSevereWeather ? 'danger-text' : ''}`}>
-                  {currentRain} mm/h {isDemoMode ? '(DEMO)' : ''}
+                  {currentRain} mm/h
                 </strong>
               </div>
 
@@ -372,7 +371,7 @@ export default function OverviewTab({
                 <span className="river-name">{t.musiRiver || 'Musi River Telemetry'}:</span>
               </div>
               <strong className={`river-level ${isSevereWeather ? 'danger-text' : 'safe-text'}`}>
-                {musiWaterLevel} {isDemoMode ? '[DEMO]' : ''} {!isSevereWeather && !isAvailable('hydrology') ? `(${statusLabel('hydrology')})` : ''}
+                {musiWaterLevel} {!isSevereWeather && !isAvailable('hydrology') ? `(${statusLabel('hydrology')})` : ''}
               </strong>
             </div>
           </section>

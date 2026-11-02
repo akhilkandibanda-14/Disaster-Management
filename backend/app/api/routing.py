@@ -27,8 +27,15 @@ def evacuation_route(request: EvacuationRouteRequest, db: Session = Depends(get_
     if not is_in_hyderabad(request.origin.latitude, request.origin.longitude):
         raise HTTPException(status_code=422, detail="This service currently supports Hyderabad coordinates only.")
     
-    shelters = demo_shelters() if settings.demo_mode else list(db.scalars(select(Shelter)).all())
-    roads = demo_roads() if settings.demo_mode else list(db.scalars(select(RoadCondition)).all())
+    try:
+        shelters = demo_shelters() if settings.demo_mode else list(db.scalars(select(Shelter)).all())
+    except Exception:
+        shelters = demo_shelters() if settings.demo_mode else []
+
+    try:
+        roads = demo_roads() if settings.demo_mode else list(db.scalars(select(RoadCondition)).all())
+    except Exception:
+        roads = demo_roads() if settings.demo_mode else []
     
     shelter = None
     dest_lat = None

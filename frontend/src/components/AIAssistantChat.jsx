@@ -20,7 +20,7 @@ const COPY = {
     safety: 'Basic flood safety: move to higher ground, never walk or drive through moving water, stay away from drains and manholes, switch off electricity only if safe, and call 112 for immediate danger.',
     definition: 'A flood is water covering land that is normally dry. It can result from heavy rain, overflowing rivers, blocked drains, or urban waterlogging. Avoid entering floodwater because depth and currents can be hidden.',
     location: 'Your dashboard is currently using the selected location at {coordinates}. Location-based answers are limited to the data available for that point.',
-    model: 'Predictions are intentionally suppressed when the calibrated gauge-coverage safeguard is not met. The system prefers “unknown” over an invented risk number.',
+    model: 'This location is outside the model\'s supported gauge coverage, so predictions are intentionally suppressed. This does not mean the location is flood-free or low risk. The system prefers “unsupported/unknown” over an invented risk number.',
     fallback: 'I can help with immediate flood safety, routes, shelters, alerts, or emergency contacts. For a life-threatening situation, stop using the app and call 112.',
     sourceDashboard: 'Source: current dashboard data',
     sourceOfficial: 'Source: official emergency contact guidance',
@@ -46,7 +46,7 @@ const COPY = {
     safety: 'ప్రాథమిక వరద భద్రత: ఎత్తైన ప్రదేశానికి వెళ్లండి, ప్రవహించే నీటిలో నడవకండి లేదా వాహనం నడపకండి, కాలువలు మరియు మ్యాన్‌హోళ్లకు దూరంగా ఉండండి, సురక్షితంగా ఉంటే విద్యుత్ ఆపండి, తక్షణ ప్రమాదంలో 112కు కాల్ చేయండి.',
     definition: 'వరద అంటే సాధారణంగా పొడిగా ఉండే భూమిపై నీరు చేరడం. భారీ వర్షం, నది పొంగడం, మూసుకుపోయిన కాలువలు లేదా పట్టణ నీటి నిల్వ దీనికి కారణం కావచ్చు. లోతు తెలియకపోవచ్చు కాబట్టి వరద నీటిలోకి వెళ్లవద్దు.',
     location: 'డాష్‌బోర్డ్ ప్రస్తుతం ఎంచుకున్న స్థానం {coordinates}ను ఉపయోగిస్తోంది. స్థాన ఆధారిత సమాధానాలు అందుబాటులో ఉన్న డేటాకు మాత్రమే పరిమితం.',
-    model: 'క్యాలిబ్రేటెడ్ గేజ్ పరిధి సరిపోకపోతే అంచనాలు ఉద్దేశపూర్వకంగా నిలిపివేయబడతాయి. ఊహించిన సంఖ్య కంటే “తెలియదు” అనేదే సురక్షితం.',
+    model: 'ఈ స్థానం మోడల్ గేజ్ పరిధికి వెలుపల ఉంది, కాబట్టి అంచనాలు నిలిపివేయబడ్డాయి. దీని అర్థం ఈ ప్రాంతం వరద-రహితం లేదా తక్కువ ప్రమాదం అని కాదు. ఊహించిన సంఖ్య కంటే “మద్దతు లేనిది/తెలియదు” అనేదే సురక్షితం.',
     fallback: 'తక్షణ వరద భద్రత, మార్గాలు, ఆశ్రయాలు, హెచ్చరికలు లేదా అత్యవసర నంబర్ల గురించి అడగండి. ప్రాణాపాయం ఉంటే 112కు కాల్ చేయండి.',
     sourceDashboard: 'మూలం: ప్రస్తుత డాష్‌బోర్డ్ సమాచారం',
     sourceOfficial: 'మూలం: అధికారిక అత్యవసర సంప్రదింపులు',
@@ -72,7 +72,7 @@ const COPY = {
     safety: 'बाढ़ सुरक्षा: ऊंची जगह जाएं, बहते पानी में न चलें या वाहन न चलाएं, नालों और मैनहोल से दूर रहें, सुरक्षित हो तो बिजली बंद करें और तत्काल खतरे में 112 पर कॉल करें।',
     definition: 'बाढ़ वह स्थिति है जब सामान्य रूप से सूखी जमीन पर पानी भर जाता है। भारी बारिश, नदी का उफान, बंद नालियां या जलभराव इसके कारण हो सकते हैं।',
     location: 'डैशबोर्ड अभी चुने गए स्थान {coordinates} का उपयोग कर रहा है। स्थान-आधारित जवाब उपलब्ध डेटा तक सीमित हैं।',
-    model: 'कैलिब्रेटेड गेज कवरेज न मिलने पर अनुमान जानबूझकर रोक दिए जाते हैं। गलत संख्या देने से “अज्ञात” बेहतर है।',
+    model: 'यह स्थान मॉडल के समर्थित कवरेज से बाहर है, इसलिए अनुमान रोक दिए गए हैं। इसका अर्थ यह नहीं है कि यह क्षेत्र बाढ़-मुक्त या कम जोखिम वाला है। गलत संख्या के बजाय “असमर्थित/अज्ञात” स्थिति सुरक्षित है।',
     fallback: 'तत्काल बाढ़ सुरक्षा, मार्ग, आश्रय, चेतावनी या आपातकालीन नंबर के बारे में पूछें। जान का खतरा हो तो 112 पर कॉल करें।',
     sourceDashboard: 'स्रोत: वर्तमान डैशबोर्ड डेटा',
     sourceOfficial: 'स्रोत: आधिकारिक आपातकालीन संपर्क',
@@ -101,8 +101,12 @@ export default function AIAssistantChat({ language = 'en', riskData, weather, al
   const [userQuery, setUserQuery] = useState('')
   const [messages, setMessages] = useState([{ sender: 'bot', text: copy.welcome, source: copy.sourceLimits }])
 
-  const context = useMemo(() => ({
-    riskLabel: riskData?.risk_level || riskData?.risk_label || 'unknown / not confirmed',
+  const context = useMemo(() => {
+    let riskLabel = riskData?.risk_level || riskData?.risk_label || 'unknown / not confirmed'
+    if (riskData?.coverage_status === 'MODEL_UNSUPPORTED' || riskData?.is_supported === false) {
+      riskLabel = 'outside model coverage (MODEL_UNSUPPORTED; not verified flood-free or low risk)'
+    }
+    return {
     weatherLabel: weather?.description || weather?.condition || 'not available',
     alertCount: alerts.length,
     routeStatus: route?.status || 'not calculated',
@@ -114,7 +118,8 @@ export default function AIAssistantChat({ language = 'en', riskData, weather, al
       ? `Highest mapped severity: ${hazardWarning.highest_severity}.`
       : 'No mapped hazard severity is currently available.',
     coordinates: location ? `${Number(location.latitude).toFixed(4)}, ${Number(location.longitude).toFixed(4)}` : 'the default Hyderabad location',
-  }), [riskData, weather, alerts.length, route, shelters.length, hazardWarning, location])
+    }
+  }, [riskData, weather, alerts.length, route, shelters.length, hazardWarning, location])
 
   const answer = (query) => {
     const lower = query.toLowerCase()
@@ -134,7 +139,7 @@ export default function AIAssistantChat({ language = 'en', riskData, weather, al
     if (/(route|evac|road|drive|car|travel)/i.test(lower)) return { text: copy.route, source: copy.sourceLimits }
     if (/(shelter|hospital|bed|safe place)/i.test(lower)) return { text: copy.shelter, source: copy.sourceDashboard }
     if (/(risk|weather|rain|alert|status|temperature|forecast)/i.test(lower)) return { text: format(copy.risk, context), source: `${copy.sourceDashboard} · ${context.alertCount} alert(s)` }
-    if (/(model|prediction|gauge|unsupported)/i.test(lower)) return { text: copy.model, source: copy.sourceLimits }
+    if (/(model|prediction|gauge|coverage|unsupported)/i.test(lower)) return { text: copy.model, source: copy.sourceLimits }
     return { text: copy.fallback, source: copy.sourceSafety }
   }
 

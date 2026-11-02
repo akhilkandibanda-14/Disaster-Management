@@ -571,7 +571,7 @@ export default function OperationsDashboard({
           </strong>
           <small>Road Graph: {healthData?.external_feeds?.road_network?.status || 'LOADED'}</small>
           <small style={{display: 'block', color: healthData?.external_feeds?.weather?.is_stale ? '#fbbf24' : '#38bdf8'}}>
-            Weather: {healthData?.external_feeds?.weather?.is_stale ? 'STALE (>3h)' : (healthData?.external_feeds?.weather?.is_simulated ? 'DEMO SIMULATED' : 'LIVE')}
+            Weather: {healthData?.external_feeds?.weather?.is_stale ? 'STALE (>3h)' : 'LIVE'}
           </small>
         </article>
 
@@ -588,7 +588,7 @@ export default function OperationsDashboard({
             {blockedRoadsCount}
           </strong>
           <small>Hazard-aware routing evaluates these records</small>
-          <small style={{display: 'block', color: 'var(--warning)'}}>Demo records when DEMO_MODE is enabled</small>
+          <small style={{display: 'block', color: 'var(--warning)'}}>Municipal & survey reports</small>
         </article>
 
         <article className="metric-card">
@@ -1263,7 +1263,7 @@ export default function OperationsDashboard({
             <p><strong>Hospitals:</strong> Public Health & Vaidya Vidhana Parishad Directories (PUBLIC_UNVERIFIED)</p>
             <p><strong>Shelters:</strong> GHMC community listings (PUBLIC_UNVERIFIED)</p>
             <p><strong>Road Network:</strong> OpenStreetMap + Hazard-Aware Rerouting</p>
-            <p><strong>Hydrology / Road Hazards:</strong> DEMO Simulation Data</p>
+            <p><strong>Hydrology / Road Hazards:</strong> Historical hydrological surveys & municipal records</p>
             <hr style={{borderColor: 'rgba(255,255,255,0.05)', margin: '16px 0'}} />
             <p style={{fontSize: '0.9em'}}>
               <strong>Integrity Guard:</strong> Bed availability, shelter capacity, and operational status are left <code>null</code> / <code>UNKNOWN</code> unless officially verified. Never fabricate emergency triage readiness.

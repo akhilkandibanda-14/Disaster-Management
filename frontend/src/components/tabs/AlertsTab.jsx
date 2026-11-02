@@ -30,7 +30,6 @@ export default function AlertsTab({ alerts, floodHazards, hazardWarning, dashboa
   const filteredAlerts = combinedAlerts.filter((item) => {
     if (filter === 'ALL') return true
     if (filter === 'AUTHORITATIVE') return item.is_authoritative || item.data_status === 'AUTHORITATIVE'
-    if (filter === 'DEMO') return item.data_status === 'DEMO'
     if (filter === 'MUNICIPAL') return item.data_status === 'PUBLIC_UNVERIFIED' || item.data_status === 'MUNICIPAL'
     return true
   })
@@ -64,13 +63,6 @@ export default function AlertsTab({ alerts, floodHazards, hazardWarning, dashboa
               onClick={() => setFilter('AUTHORITATIVE')}
             >
               Authoritative
-            </button>
-            <button 
-              type="button" 
-              className={`filter-pill ${filter === 'DEMO' ? 'active' : ''}`}
-              onClick={() => setFilter('DEMO')}
-            >
-              Demo Records
             </button>
           </div>
         </div>

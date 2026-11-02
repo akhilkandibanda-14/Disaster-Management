@@ -4,6 +4,8 @@ from typing import Optional
 from app.auth import require_admin
 from app.config import settings
 from app.schemas.emergency_facility import EmergencyFacility, EmergencyFacilityListResponse, VerificationPromotionRequest
+from app.schemas.hospital_discovery import NearbyHospitalDiscoveryResponse
+from app.services.hospital_discovery import HospitalDiscoveryService, get_hospital_discovery_service
 from app.services.emergency_facility import EmergencyFacilityService, get_emergency_facility_service
 from app.utils.observability import health_monitor
 
@@ -52,6 +54,35 @@ def get_emergency_facilities(
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching emergency facilities: {str(e)}")
+
+
+
+@router.get("/emergency-facilities/nearby-hospitals", response_model=NearbyHospitalDiscoveryResponse)
+@router.get("/hospitals/nearby", response_model=NearbyHospitalDiscoveryResponse)
+def get_nearby_hospitals(
+    latitude: float = Query(..., ge=-90, le=90, description="User origin latitude"),
+    longitude: float = Query(..., ge=-180, le=180, description="User origin longitude"),
+    radius_km: float = Query(5.0, gt=0, le=30.0, description="Nearby search radius in kilometers"),
+    limit: int = Query(15, gt=0, le=50, description="Maximum number of candidates to return"),
+    force_refresh: bool = Query(False, description="Bypass cache and force upstream refresh"),
+    service: HospitalDiscoveryService = Depends(get_hospital_discovery_service)
+) -> NearbyHospitalDiscoveryResponse:
+    """
+    Discovers nearby real hospital candidates using OpenStreetMap POI queries.
+    Results are strictly sorted by straight-line distance, deduplicated, and marked PUBLIC_UNVERIFIED.
+    """
+    try:
+        return service.discover_nearby_hospitals(
+            latitude=latitude,
+            longitude=longitude,
+            radius_km=radius_km,
+            limit=limit,
+            force_refresh=force_refresh
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error discovering nearby hospitals: {str(e)}")
 
 
 @router.get("/emergency-facilities/{facility_id}", response_model=EmergencyFacility)

@@ -18,8 +18,13 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
-from app.main import app
+from app.main import app, health_monitor
+from app.database import Base, get_db
+from app.models.resources import Shelter, Alert, RoadCondition
 from app.services.hazard import HazardService, classify_flood_alert
 from app.services.routing import build_graph_route
 from app.services.road_network import road_network_service
@@ -33,6 +38,79 @@ from app.schemas.weather import WeatherResponse
 @pytest.fixture(scope="module")
 def client():
     return TestClient(app)
+
+
+@pytest.fixture(scope="module", autouse=True)
+def isolated_reliability_db():
+    """
+    Isolated in-memory SQLite database fixture for operational reliability tests.
+    Provides controlled, deterministic facility, alert, and road records
+    so integration tests verify real route navigation and filtering without
+    depending on an external live PostgreSQL container.
+    """
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(bind=engine)
+    TestingSession = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+
+    now = datetime.now(timezone.utc)
+    with TestingSession() as session:
+        shelter1 = Shelter(
+            id=1,
+            name="Community Relief Center",
+            latitude=17.401,
+            longitude=78.472,
+            capacity=200,
+            available_capacity=150,
+            status="OPEN",
+            accessibility="WHEELCHAIR",
+            contact="040-123456",
+            risk_level="LOW",
+            last_updated=now
+        )
+        flood_alert = Alert(
+            id=1,
+            disaster_type="FLASH_FLOOD",
+            severity="HIGH",
+            affected_area="Musi river corridor",
+            source="IMD / CWC",
+            description="Rising water levels along Musi river corridor",
+            issued_at=now
+        )
+        earthquake_alert = Alert(
+            id=2,
+            disaster_type="EARTHQUAKE",
+            severity="LOW",
+            affected_area="Telangana Region",
+            source="IMD",
+            description="Non-flood incident record",
+            issued_at=now
+        )
+        road1 = RoadCondition(
+            id=1,
+            road_name="NH 65 Moosarambagh Link",
+            latitude=17.3850,
+            longitude=78.4867,
+            status="PASSABLE",
+            notes="Surface water receding",
+            last_updated=now
+        )
+        session.add_all([shelter1, flood_alert, earthquake_alert, road1])
+        session.commit()
+
+    def override_get_db():
+        session = TestingSession()
+        try:
+            yield session
+        finally:
+            session.close()
+
+    app.dependency_overrides[get_db] = override_get_db
+    yield
+    app.dependency_overrides.pop(get_db, None)
 
 
 @pytest.fixture(scope="module")
@@ -431,15 +509,13 @@ class TestSecurityAndErrorHandling:
 
     def test_global_exception_handler_sanitizes_errors(self, monkeypatch):
         """Unhandled server errors must return a clean message without stack trace leakage."""
-        from app.api import resources as res_api
-
-        def mock_crash():
+        def mock_crash(*args, **kwargs):
             raise RuntimeError("Secret DB Password in memory: postgres://admin:super_secret@localhost:5432/db")
 
-        monkeypatch.setattr(res_api, "demo_alerts", mock_crash)
+        monkeypatch.setattr(health_monitor, "get_health_status", mock_crash)
 
         client_no_raise = TestClient(app, raise_server_exceptions=False)
-        resp = client_no_raise.get("/disaster-alerts")
+        resp = client_no_raise.get("/health")
         assert resp.status_code == 500
         data = resp.json()
         assert "super_secret" not in str(data)

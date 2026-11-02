@@ -13,7 +13,8 @@ export default function MapTab({
   loading,
   hazardWarning,
   onLocationSelect,
-  incidents = []
+  incidents = [],
+  nearbyHospitals = []
 }) {
   return (
     <div className="tab-map-view">
@@ -33,6 +34,7 @@ export default function MapTab({
             showLayersControl={true}
             height="calc(100vh - 160px)"
             incidents={incidents}
+            nearbyHospitals={nearbyHospitals}
           />
         </div>
 
@@ -131,13 +133,6 @@ export default function MapTab({
                 <div>
                   <strong>Municipal Survey Flood Zone</strong>
                   <p>Historical waterlogging vulnerability</p>
-                </div>
-              </div>
-              <div className="legend-row">
-                <span className="legend-dot" style={{ backgroundColor: '#c084fc' }} />
-                <div>
-                  <strong>Demonstration Hazard Zone [DEMO]</strong>
-                  <p>Simulated test polygons for pilot evaluation</p>
                 </div>
               </div>
             </div>

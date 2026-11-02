@@ -55,6 +55,12 @@ export default function App() {
   const [floodHazards, setFloodHazards] = useState([])
   const [hazardWarning, setHazardWarning] = useState(null)
   const [incidents, setIncidents] = useState([])
+  const [nearbyHospitals, setNearbyHospitals] = useState([])
+  const [nearbyHospitalsLoading, setNearbyHospitalsLoading] = useState(false)
+  const [nearbyHospitalsError, setNearbyHospitalsError] = useState('')
+  const [nearbySearchRadius, setNearbySearchRadius] = useState(5.0)
+  const [nearbyHospitalsSource, setNearbyHospitalsSource] = useState('')
+  const [nearbyHospitalsWarning, setNearbyHospitalsWarning] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [dashboardStatus, setDashboardStatus] = useState(initialDashboardStatus)
@@ -71,6 +77,37 @@ export default function App() {
       throw new Error(payload.detail ?? `Request failed: ${response.status}`)
     }
     return response.json()
+  }
+
+  const fetchNearbyHospitals = async (coords = location, radius = nearbySearchRadius, force = false) => {
+    if (!coords || coords.latitude == null || coords.longitude == null) return
+    setNearbyHospitalsLoading(true)
+    setNearbyHospitalsError('')
+    setNearbyHospitalsWarning('')
+    try {
+      const url = `/emergency-facilities/nearby-hospitals?latitude=${coords.latitude}&longitude=${coords.longitude}&radius_km=${radius}&limit=15${force ? '&force_refresh=true' : ''}`
+      const data = await request(url)
+      if (data?.hospitals) {
+        setNearbyHospitals(data.hospitals)
+        setNearbyHospitalsSource(data.source || 'OpenStreetMap')
+        if (data.warning) setNearbyHospitalsWarning(data.warning)
+      } else {
+        setNearbyHospitals([])
+      }
+    } catch (err) {
+      setNearbyHospitalsError(err.message || 'Unable to discover nearby hospitals.')
+    } finally {
+      setNearbyHospitalsLoading(false)
+    }
+  }
+
+  const handleNearbyRadiusChange = (newRadius) => {
+    setNearbySearchRadius(newRadius)
+    fetchNearbyHospitals(location, newRadius, false)
+  }
+
+  const handleRefreshNearbyHospitals = (radius = nearbySearchRadius, force = true) => {
+    fetchNearbyHospitals(location, radius, force)
   }
 
   const { route, isRouting, calculateRouteForFacility, cancelRoute } = useEvacuationRoute({
@@ -140,6 +177,12 @@ export default function App() {
       const nextStatus = Object.fromEntries(
         dashboardResourceNames.map(name => [name, resources[name].status])
       )
+      if (resources.roads?.status === 'available') {
+        const roadPayload = resources.roads.data
+        if (roadPayload && !Array.isArray(roadPayload) && (roadPayload.data_status === 'UNAVAILABLE' || roadPayload.data_status === 'DEGRADED')) {
+          nextStatus.roads = 'unavailable'
+        }
+      }
       setDashboardStatus(nextStatus)
       setApiStatus(healthResult.status === 'available'
         ? (healthResult.data?.demo_mode ? 'API Online · Demo Mode' : 'API Online')
@@ -172,6 +215,7 @@ export default function App() {
       if (resources.shelters.status === 'available') setShelters(allShelters)
       
       const shelterRes = resources.recommendation.status === 'available' ? resources.recommendation.data : null
+      fetchNearbyHospitals(currentLocation, nearbySearchRadius, false)
       if (shelterRes?.recommendations?.[0]) {
         setSelectedFacility(shelterRes.recommendations[0])
       } else if (combinedFacilities.length > 0) {
@@ -181,7 +225,10 @@ export default function App() {
       }
       
       if (resources.alerts.status === 'available') setAlerts(resources.alerts.data || [])
-      if (resources.roads.status === 'available') setRoads(resources.roads.data || [])
+      if (resources.roads.status === 'available') {
+        const roadPayload = resources.roads.data
+        setRoads(Array.isArray(roadPayload) ? roadPayload : (roadPayload?.roads || []))
+      }
       const gaugeList = resources.gauges.status === 'available' ? resources.gauges.data : null
       if (resources.gauges.status === 'available') setGauges(gaugeList?.gauges || gaugeList || [])
       setHydrology(resources.hydrology.status === 'available' ? resources.hydrology.data : null)
@@ -348,6 +395,7 @@ export default function App() {
             hazardWarning={hazardWarning}
             onLocationSelect={handleLocationSelect}
             incidents={incidents}
+            nearbyHospitals={nearbyHospitals}
           />
         )}
 
@@ -368,6 +416,14 @@ export default function App() {
             onMyLocation={refreshLocation}
             onLocationSelect={handleLocationSelect}
             incidents={incidents}
+            nearbyHospitals={nearbyHospitals}
+            nearbyLoading={nearbyHospitalsLoading}
+            nearbyError={nearbyHospitalsError}
+            nearbyRadius={nearbySearchRadius}
+            onRadiusChange={handleNearbyRadiusChange}
+            onRefreshNearbyHospitals={handleRefreshNearbyHospitals}
+            nearbySource={nearbyHospitalsSource}
+            nearbyWarning={nearbyHospitalsWarning}
           />
         )}
 

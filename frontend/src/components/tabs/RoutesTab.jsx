@@ -16,7 +16,15 @@ export default function RoutesTab({
   onMyLocation,
   onLocationSelect,
   incidents = [],
-  dashboardStatus = {}
+  dashboardStatus = {},
+  nearbyHospitals = [],
+  nearbyLoading = false,
+  nearbyError = '',
+  nearbyRadius = 5.0,
+  onRadiusChange,
+  onRefreshNearbyHospitals,
+  nearbySource = '',
+  nearbyWarning = ''
 }) {
   const [filterType, setFilterType] = useState('ALL')
 
@@ -72,11 +80,11 @@ export default function RoutesTab({
                     <>
                       <strong>{selectedFacility.name}</strong>
                       <span className="endpoint-coords">
-                        {selectedFacility.distance_km != null ? `${selectedFacility.distance_km.toFixed(2)} km away` : ''} · {selectedFacility.facility_type || 'SHELTER'}
+                        {selectedFacility.distance_km != null ? `${selectedFacility.distance_km.toFixed(2)} km away` : ''} · {selectedFacility.facility_type || 'SHELTER'} {selectedFacility.verification_status === 'UNVERIFIED' || selectedFacility.data_status === 'PUBLIC_UNVERIFIED' ? '· (Unverified)' : ''}
                       </span>
                     </>
                   ) : (
-                    <span className="muted">Select a destination from the list below</span>
+                    <span className="muted">Select a destination from the lists below</span>
                   )}
                 </div>
               </div>
@@ -196,8 +204,151 @@ export default function RoutesTab({
             )}
           </div>
 
-          {/* Alternative Facilities Selector */}
-          <div className="card-panel">
+          {/* Dedicated Section: Nearby Hospital Candidates (OpenStreetMap) */}
+          <div className="card-panel" style={{ marginTop: '16px' }}>
+            <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 className="panel-title">Nearby Hospital Candidates (OSM)</h3>
+                <p className="panel-subtitle" style={{ margin: '2px 0 0', fontSize: '11px', color: '#94a3b8' }}>
+                  Real OpenStreetMap healthcare POIs discovered near your location
+                </p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <label htmlFor="nearby-radius-select" style={{ fontSize: '12px', color: '#94a3b8' }}>Radius:</label>
+                <select
+                  id="nearby-radius-select"
+                  aria-label="Nearby search radius"
+                  value={nearbyRadius}
+                  onChange={(e) => onRadiusChange && onRadiusChange(Number(e.target.value))}
+                  style={{
+                    background: '#1e293b',
+                    color: '#f8fafc',
+                    border: '1px solid #475569',
+                    borderRadius: '4px',
+                    padding: '3px 8px',
+                    fontSize: '12px'
+                  }}
+                  disabled={nearbyLoading}
+                >
+                  <option value={2}>2 km</option>
+                  <option value={5}>5 km</option>
+                  <option value={10}>10 km</option>
+                  <option value={15}>15 km</option>
+                </select>
+                <button
+                  type="button"
+                  className="btn-select-small"
+                  onClick={() => onRefreshNearbyHospitals && onRefreshNearbyHospitals(nearbyRadius, true)}
+                  disabled={nearbyLoading}
+                  title="Refresh nearby hospital candidates"
+                  style={{ padding: '4px 8px', fontSize: '12px' }}
+                >
+                  {nearbyLoading ? 'Searching...' : 'Refresh'}
+                </button>
+              </div>
+            </div>
+
+            {/* Truth-in-data Notice */}
+            <div style={{
+              marginTop: '10px',
+              padding: '8px 10px',
+              background: 'rgba(234, 179, 8, 0.12)',
+              border: '1px solid rgba(234, 179, 8, 0.35)',
+              borderRadius: '6px',
+              fontSize: '11px',
+              color: '#fef08a'
+            }}>
+              ⚠️ <strong>Verification Notice:</strong> Hospital records from OpenStreetMap are unverified. Operational readiness, trauma intake, and casualty acceptance are not confirmed in real time. Confirm via 108 / 112 before travelling.
+            </div>
+
+            {nearbyWarning && (
+              <div style={{
+                marginTop: '8px',
+                padding: '6px 10px',
+                background: 'rgba(59, 130, 246, 0.15)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                borderRadius: '6px',
+                fontSize: '11px',
+                color: '#93c5fd'
+              }}>
+                ℹ️ {nearbyWarning}
+              </div>
+            )}
+
+            {nearbyError && (
+              <div style={{
+                marginTop: '8px',
+                padding: '8px 10px',
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                borderRadius: '6px',
+                fontSize: '11px',
+                color: '#fca5a5'
+              }}>
+                ❌ {nearbyError}
+              </div>
+            )}
+
+            {nearbyLoading ? (
+              <div style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
+                <span className="spinner" aria-hidden="true" style={{ display: 'inline-block', marginRight: '8px' }} />
+                <span>Searching nearby OpenStreetMap healthcare facilities...</span>
+              </div>
+            ) : nearbyHospitals.length === 0 ? (
+              <p className="muted" style={{ padding: '16px 4px', textAlign: 'center' }}>
+                No hospital candidates discovered within {nearbyRadius} km. Try expanding the search radius.
+              </p>
+            ) : (
+              <div className="routes-facilities-scroll" style={{ maxHeight: '220px', overflowY: 'auto', marginTop: '10px' }}>
+                {nearbyHospitals.map((fac) => {
+                  const isSelected = selectedFacility && (
+                    (selectedFacility.facility_id && selectedFacility.facility_id === fac.facility_id) ||
+                    (selectedFacility.id && selectedFacility.id === fac.facility_id)
+                  )
+                  return (
+                    <div
+                      key={fac.facility_id}
+                      className={`facility-selection-item ${isSelected ? 'active' : ''}`}
+                      onClick={() => onFacilitySelect(fac)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <div className="fac-select-info">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <strong>{fac.name}</strong>
+                          <span style={{
+                            fontSize: '9px',
+                            padding: '1px 5px',
+                            borderRadius: '3px',
+                            background: 'rgba(239, 68, 68, 0.2)',
+                            color: '#f87171',
+                            fontWeight: 'bold'
+                          }}>
+                            UNVERIFIED
+                          </span>
+                        </div>
+                        <span className="fac-meta-line" style={{ display: 'block', marginTop: '2px', fontSize: '11px', color: '#94a3b8' }}>
+                          {fac.distance_km != null ? `${fac.distance_km.toFixed(2)} km away` : ''} · {fac.facility_type || 'HOSPITAL'} · {fac.area || 'Hyderabad'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        className={`btn-select-small ${isSelected ? 'active' : ''}`}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onFacilitySelect(fac)
+                        }}
+                      >
+                        {isSelected ? 'Selected' : 'Select'}
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Alternative Facilities Selector (Curated Directory) */}
+          <div className="card-panel" style={{ marginTop: '16px' }}>
             <div className="panel-header">
               <h3 className="panel-title">Available Destination Facilities</h3>
               <div className="filter-pill-group">
@@ -280,6 +431,7 @@ export default function RoutesTab({
               onLocationSelect={onLocationSelect}
               height="580px"
               incidents={incidents}
+              nearbyHospitals={nearbyHospitals}
             />
           </div>
         </div>

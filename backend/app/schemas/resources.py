@@ -31,6 +31,15 @@ class RoadConditionResponse(BaseModel):
     last_updated: datetime
 
 
+class RoadConditionListResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    roads: list[RoadConditionResponse] = Field(default_factory=list)
+    total: int = 0
+    data_status: str = "AVAILABLE"
+    warning: str | None = None
+
+
 
 ALLOWED_FLOOD_DISASTER_TYPES = {
     "FLOOD",

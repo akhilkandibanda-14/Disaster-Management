@@ -91,6 +91,14 @@ test('stale finally blocks cannot clear the current route loading state', () => 
   assert.match(routeHookContent, /setRoute\(null\)/)
 })
 
+test('route hook re-arms mounted state on effect execution for React Strict Mode compatibility', () => {
+  assert.match(
+    routeHookContent,
+    /useEffect\(\(\)\s*=>\s*\{[\s\S]*?isMountedRef\.current\s*=\s*true/,
+    'useEvacuationRoute must re-arm isMountedRef.current = true within useEffect for React Strict Mode remounting'
+  )
+})
+
 test('facility coordinates are validated before a route request', () => {
   assert.equal(isValidCoordinate(destination), true)
   assert.equal(isValidCoordinate({ latitude: Number.NaN, longitude: destination.longitude }), false)

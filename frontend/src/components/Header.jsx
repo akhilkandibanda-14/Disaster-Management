@@ -12,8 +12,6 @@ export default function Header({
   onOpenSOS,
   apiStatus,
   alertsCount,
-  isDemoMode = false,
-  onToggleDemoMode,
   t
 }) {
   const tabs = [
@@ -113,19 +111,8 @@ export default function Header({
 
         {/* Actions: Demo Mode and SOS Emergency Button */}
         <div className="control-actions-right">
-          <button
-            type="button"
-            id="header-demo-mode-btn"
-            className={`header-demo-mode-btn ${isDemoMode ? 'active' : ''}`}
-            onClick={onToggleDemoMode}
-            aria-label={isDemoMode ? (t.exitDemoButton || 'Exit Demo') : '▶ DEMO MODE'}
-            title={isDemoMode ? "Exit simulated emergency demonstration and restore normal dashboard" : "Launch simulated Hyderabad flood emergency demonstration"}
-          >
-            <span className="demo-play-icon" aria-hidden="true">{isDemoMode ? '⏹' : '▶'}</span>
-            <span>{isDemoMode ? (t.exitDemoButton || 'Exit Demo') : (t.demoModeButton || 'DEMO MODE')}</span>
-          </button>
 
-          <button
+<button
             type="button"
             className="header-sos-emergency-btn"
             onClick={onOpenSOS}

@@ -112,4 +112,11 @@ test.describe('browser evacuation flow', () => {
     await expect(navigation).toBeVisible()
     await expect(navigation).toBeEnabled()
   })
+
+  test('verifies demo mode button and banner are completely absent from UI', async ({ page }) => {
+    await mockDashboard(page)
+    await expect(page.locator('#header-demo-mode-btn')).toHaveCount(0)
+    await expect(page.locator('#demo-mode-indicator-banner')).toHaveCount(0)
+    await expect(page.getByText('DEMO MODE')).toHaveCount(0)
+  })
 })

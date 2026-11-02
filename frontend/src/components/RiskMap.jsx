@@ -150,15 +150,15 @@ function MapTileLayer({ tileMode = 'street', onTileErrorChange }) {
   )
 }
 
-export default function RiskMap({ 
-  riskData, 
-  location, 
-  facilities, 
-  selectedFacility, 
-  onFacilitySelect, 
-  roads, 
-  route, 
-  floodHazards, 
+export default function RiskMap({
+  riskData,
+  location,
+  facilities,
+  selectedFacility,
+  onFacilitySelect,
+  roads,
+  route,
+  floodHazards,
   loading,
   onLocationSelect,
   showLayersControl = true,
@@ -167,7 +167,8 @@ export default function RiskMap({
   tileMode: externalTileMode,
   onTileModeChange,
   incidents = [],
-  flyZoom = 15
+  flyZoom = 15,
+  nearbyHospitals = []
 }) {
   const [hasTileError, setHasTileError] = useState(false)
   const [internalTileMode, setInternalTileMode] = useState('street')
@@ -179,7 +180,7 @@ export default function RiskMap({
       onTileModeChange(mode)
     }
   }
-  
+
   // Layer toggles (synced with activeLayers if passed, otherwise internal state)
   const [internalShowHazards, setInternalShowHazards] = useState(true)
   const [internalShowRoads, setInternalShowRoads] = useState(true)
@@ -195,9 +196,34 @@ export default function RiskMap({
   const showRoute = activeLayers?.route !== undefined ? activeLayers.route : internalShowRoute
   const showIncidents = activeLayers?.incidents !== undefined ? activeLayers.incidents : internalShowIncidents
 
+
+  const allFacilities = React.useMemo(() => {
+    const list = [...(facilities || [])]
+    const ids = new Set(list.map(f => String(f.facility_id || f.id || `${f.name}-${f.latitude}`)))
+    ;(nearbyHospitals || []).forEach(h => {
+      const hid = String(h.facility_id || h.id || `${h.name}-${h.latitude}`)
+      if (!ids.has(hid)) {
+        ids.add(hid)
+        list.push({
+          ...h,
+          facility_type: h.facility_type || 'HOSPITAL',
+          is_osm_candidate: true
+        })
+      }
+    })
+    if (selectedFacility) {
+      const selId = String(selectedFacility.facility_id || selectedFacility.id || `${selectedFacility.name}-${selectedFacility.latitude}`)
+      if (!ids.has(selId)) {
+        ids.add(selId)
+        list.push(selectedFacility)
+      }
+    }
+    return list
+  }, [facilities, nearbyHospitals, selectedFacility])
+
   const center = [location?.latitude ?? 17.385, location?.longitude ?? 78.4867]
   const routePositions = (route?.geometry && showRoute)
-    ? route.geometry.map(([longitude, latitude]) => [latitude, longitude]) 
+    ? route.geometry.map(([longitude, latitude]) => [latitude, longitude])
     : []
   const isDetour = route?.is_rerouted || route?.road_condition_status === 'HAZARDS_AVOIDED'
   const isBlocked = route?.route_status === 'NO_SAFE_ROUTE'
@@ -237,51 +263,51 @@ export default function RiskMap({
             </button>
           </div>
           <label className="layer-checkbox">
-            <input 
-              type="checkbox" 
-              checked={showHazards} 
-              onChange={(e) => setInternalShowHazards(e.target.checked)} 
+            <input
+              type="checkbox"
+              checked={showHazards}
+              onChange={(e) => setInternalShowHazards(e.target.checked)}
             />
             <span className="checkbox-label">Flood Hazards</span>
           </label>
           <label className="layer-checkbox">
-            <input 
-              type="checkbox" 
-              checked={showRoads} 
-              onChange={(e) => setInternalShowRoads(e.target.checked)} 
+            <input
+              type="checkbox"
+              checked={showRoads}
+              onChange={(e) => setInternalShowRoads(e.target.checked)}
             />
             <span className="checkbox-label">Roads</span>
           </label>
           <label className="layer-checkbox">
-            <input 
-              type="checkbox" 
-              checked={showShelters} 
-              onChange={(e) => setInternalShowShelters(e.target.checked)} 
+            <input
+              type="checkbox"
+              checked={showShelters}
+              onChange={(e) => setInternalShowShelters(e.target.checked)}
             />
             <span className="checkbox-label">Shelters</span>
           </label>
           <label className="layer-checkbox">
-            <input 
-              type="checkbox" 
-              checked={showHospitals} 
-              onChange={(e) => setInternalShowHospitals(e.target.checked)} 
+            <input
+              type="checkbox"
+              checked={showHospitals}
+              onChange={(e) => setInternalShowHospitals(e.target.checked)}
             />
             <span className="checkbox-label">Hospitals</span>
           </label>
           <label className="layer-checkbox">
-            <input 
-              type="checkbox" 
-              checked={showIncidents} 
-              onChange={(e) => setInternalShowIncidents(e.target.checked)} 
+            <input
+              type="checkbox"
+              checked={showIncidents}
+              onChange={(e) => setInternalShowIncidents(e.target.checked)}
             />
             <span className="checkbox-label">Citizen Reports</span>
           </label>
           {route && (
             <label className="layer-checkbox">
-              <input 
-                type="checkbox" 
-                checked={showRoute} 
-                onChange={(e) => setInternalShowRoute(e.target.checked)} 
+              <input
+                type="checkbox"
+                checked={showRoute}
+                onChange={(e) => setInternalShowRoute(e.target.checked)}
               />
               <span className="checkbox-label">Evac Route</span>
             </label>
@@ -289,11 +315,11 @@ export default function RiskMap({
         </div>
       )}
 
-      <MapContainer 
-        className="leaflet-map" 
-        center={center} 
-        zoom={12} 
-        scrollWheelZoom 
+      <MapContainer
+        className="leaflet-map"
+        center={center}
+        zoom={12}
+        scrollWheelZoom
         zoomControl={false}
       >
         <ZoomControl position="topright" />
@@ -396,9 +422,9 @@ export default function RiskMap({
                   <div style={{ minWidth: '220px', maxWidth: '300px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
                       <strong style={{ fontSize: '13px' }}>{hazard.title}</strong>
-                      <span style={{ 
-                        fontSize: '10px', 
-                        padding: '2px 6px', 
+                      <span style={{
+                        fontSize: '10px',
+                        padding: '2px 6px',
                         borderRadius: '4px',
                         background: isAuth ? 'rgba(239,68,68,0.2)' : (isDemo ? 'rgba(168,85,247,0.2)' : 'rgba(245,158,11,0.2)'),
                         color: strokeColor,
@@ -540,8 +566,8 @@ export default function RiskMap({
         })}
 
         {/* Facilities & Shelters */}
-        {facilities && facilities.map((fac) => {
-          const isHospital = fac.facility_type === 'HOSPITAL'
+        {allFacilities && allFacilities.map((fac) => {
+          const isHospital = fac.facility_type === 'HOSPITAL' || fac.facility_type === 'CLINIC'
           if (isHospital && !showHospitals) return null
           if (!isHospital && !showShelters) return null
 
@@ -569,16 +595,30 @@ export default function RiskMap({
                 <div style={{ minWidth: '220px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <strong style={{ fontSize: '13px' }}>{fac.name}</strong>
-                    <span style={{ 
-                      fontSize: '10px', 
-                      padding: '2px 6px', 
-                      borderRadius: '4px', 
-                      background: isHospital ? 'rgba(168,85,247,0.2)' : 'rgba(16,185,129,0.2)',
-                      color: markerColor,
-                      fontWeight: 'bold'
-                    }}>
-                      {fac.facility_type || 'SHELTER'}
-                    </span>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {(fac.is_osm_candidate || fac.verification_status === 'UNVERIFIED' || fac.data_status === 'PUBLIC_UNVERIFIED') && (
+                        <span style={{
+                          fontSize: '9px',
+                          padding: '1px 5px',
+                          borderRadius: '3px',
+                          background: 'rgba(239, 68, 68, 0.2)',
+                          color: '#f87171',
+                          fontWeight: 'bold'
+                        }}>
+                          UNVERIFIED
+                        </span>
+                      )}
+                      <span style={{
+                        fontSize: '10px',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        background: isHospital ? 'rgba(168,85,247,0.2)' : 'rgba(16,185,129,0.2)',
+                        color: markerColor,
+                        fontWeight: 'bold'
+                      }}>
+                        {fac.facility_type || 'SHELTER'}
+                      </span>
+                    </div>
                   </div>
                   <p style={{ fontSize: '11px', color: '#cbd5e1', margin: '4px 0' }}>
                     {fac.verification_note || 'Safety condition: Not verified.'}
@@ -590,14 +630,14 @@ export default function RiskMap({
                   )}
                   <button
                     type="button"
-                    style={{ 
-                      marginTop: '8px', 
-                      width: '100%', 
-                      padding: '6px 10px', 
-                      background: '#0ea5e9', 
-                      color: 'white', 
-                      border: 'none', 
-                      borderRadius: '4px', 
+                    style={{
+                      marginTop: '8px',
+                      width: '100%',
+                      padding: '6px 10px',
+                      background: '#0ea5e9',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
                       cursor: 'pointer',
                       fontWeight: 'bold'
                     }}
@@ -620,7 +660,7 @@ export default function RiskMap({
           const isPending = inc.verification_status === 'PENDING_REVIEW'
           const isResolved = inc.verification_status === 'RESOLVED'
           const markerColor = isVerified ? '#10b981' : isResolved ? '#3b82f6' : '#f97316'
-          
+
           return (
             <CircleMarker
               key={inc.incident_id || inc.id || `${inc.latitude}-${inc.longitude}`}
@@ -702,22 +742,22 @@ export default function RiskMap({
         {/* Evacuation Route Polyline (Two-layer: white casing under colored line) */}
         {showRoute && routePositions.length > 1 && (
           <>
-            <Polyline 
-              positions={routePositions} 
-              pathOptions={{ 
-                color: '#ffffff', 
-                weight: 7, 
-                opacity: 0.9 
-              }} 
+            <Polyline
+              positions={routePositions}
+              pathOptions={{
+                color: '#ffffff',
+                weight: 7,
+                opacity: 0.9
+              }}
             />
-            <Polyline 
-              positions={routePositions} 
-              pathOptions={{ 
-                color: isDetour ? '#f59e0b' : '#1d5fd1', 
-                weight: 4, 
+            <Polyline
+              positions={routePositions}
+              pathOptions={{
+                color: isDetour ? '#f59e0b' : '#1d5fd1',
+                weight: 4,
                 opacity: 1.0,
                 dashArray: isDetour ? '8, 6' : undefined
-              }} 
+              }}
             />
           </>
         )}
@@ -743,7 +783,6 @@ export default function RiskMap({
         <span className="legend-item"><i className="legend-dot" style={{ backgroundColor: '#ef4444', border: '1px solid #fff' }} />Authoritative Alert</span>
         <span className="legend-item"><i className="legend-dot" style={{ backgroundColor: '#f59e0b' }} />Municipal Flood Zone</span>
         <span className="legend-item"><i className="legend-dot" style={{ backgroundColor: '#f97316', border: '1px solid #fff' }} />Citizen Report</span>
-        <span className="legend-item"><i className="legend-dot" style={{ backgroundColor: '#c084fc' }} />[DEMO] Hazard</span>
         <span className="legend-item"><i className="legend-dot" style={{ backgroundColor: '#1d5fd1' }} />OSM Route</span>
         <span className="legend-item"><i className="legend-dot" style={{ backgroundColor: '#f59e0b' }} />Hazard Detour</span>
         {route?.alternatives && route.alternatives.length > 0 && (
