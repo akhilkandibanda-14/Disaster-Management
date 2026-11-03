@@ -101,9 +101,8 @@ def fetch_weather(latitude: float, longitude: float) -> WeatherResponse:
     try:
         payload = response.json()
         rain_data = payload.get("rain", {})
-        rainfall = rain_data.get("1h", None)
-        if rainfall is not None:
-            rainfall = max(0.0, float(rainfall))
+        # OpenWeather omits the rain object when no rain was recorded.
+        rainfall = max(0.0, float(rain_data.get("1h", 0.0)))
 
         main_data = payload.get("main", {})
         wind_data = payload.get("wind", {})

@@ -317,6 +317,7 @@ export default function OperationsDashboard({
   hazardWarning,
   onLocationSelect
 }) {
+  const isApiOnline = apiStatus.toLowerCase().includes('online')
   const [historicalEvents, setHistoricalEvents] = useState([]);
   const [readinessAudit, setReadinessAudit] = useState(null);
   const [sourcesInventory, setSourcesInventory] = useState(null);
@@ -557,8 +558,8 @@ export default function OperationsDashboard({
       <div className="operations-metrics" style={{ marginBottom: '24px' }}>
         <article className="metric-card">
           <span>SYSTEM STATUS</span>
-          <strong style={{ fontSize: '1.5rem', marginTop: '12px', color: apiStatus.includes('online') ? 'var(--success)' : 'var(--danger)' }}>
-            {apiStatus.includes('online') ? 'API ONLINE' : 'API OFFLINE'}
+          <strong style={{ fontSize: '1.5rem', marginTop: '12px', color: isApiOnline ? 'var(--success)' : 'var(--danger)' }}>
+            {isApiOnline ? 'API ONLINE' : 'API OFFLINE'}
           </strong>
           <small>ML Model: INDOFLOODS flood severity model</small>
           <small style={{display: 'block'}}>Feature contract: 118 raw, 130 processed</small>

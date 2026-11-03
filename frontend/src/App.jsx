@@ -91,6 +91,26 @@ export default function App() {
         setNearbyHospitals(data.hospitals)
         setNearbyHospitalsSource(data.source || 'OpenStreetMap')
         if (data.warning) setNearbyHospitalsWarning(data.warning)
+        const nearbyServices = data.hospitals.map(hospital => ({
+          ...hospital,
+          facility_type: hospital.facility_type?.toUpperCase() || 'HOSPITAL',
+          id: hospital.id || hospital.facility_id,
+          is_osm_candidate: true
+        }))
+        setFacilities(previous => {
+          const existingIds = new Set(previous.map(facility =>
+            String(facility.facility_id || facility.id || `${facility.name}-${facility.latitude}`)
+          ))
+          return [
+            ...previous,
+            ...nearbyServices.filter(facility => {
+              const id = String(facility.facility_id || facility.id || `${facility.name}-${facility.latitude}`)
+              if (existingIds.has(id)) return false
+              existingIds.add(id)
+              return true
+            })
+          ]
+        })
       } else {
         setNearbyHospitals([])
       }
@@ -160,7 +180,7 @@ export default function App() {
         requestResource('weather', `/weather?${query}`),
         requestResource('risk', `/risk-map?${query}`),
         requestResource('recommendation', `/shelters/recommended?${recQuery}`),
-        requestResource('shelters', '/shelters'),
+        requestResource('shelters', `/shelters?${query}&radius_km=15`),
         requestResource('facilities', `/emergency-facilities?facility_type=HOSPITAL&${query}&radius_km=15`),
         requestResource('alerts', '/disaster-alerts'),
         requestResource('roads', '/road-conditions'),

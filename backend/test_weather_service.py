@@ -87,6 +87,23 @@ def test_weather_configured_api_success():
             assert res.warning is None
 
 
+def test_weather_configured_api_reports_zero_rainfall_when_provider_omits_rain():
+    mock_payload = {
+        "main": {"temp": 25.3, "humidity": 67.0, "pressure": 1013},
+        "wind": {"speed": 7.7},
+        "weather": [{"main": "Clouds", "description": "scattered clouds"}],
+    }
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = mock_payload
+    mock_response.raise_for_status.return_value = None
+
+    with patch.object(settings, "weather_api_key", "valid-test-key"):
+        with patch("httpx.get", return_value=mock_response):
+            res = fetch_weather(17.3850, 78.4867)
+            assert res.rainfall == 0.0
+
+
 def test_weather_configured_api_auth_failure():
     mock_response = MagicMock()
     mock_response.status_code = 401
@@ -183,4 +200,3 @@ def test_settings_weather_api_key_alias_and_sanitization():
 
     cfg5 = Settings(WEATHER_API_KEY="none")
     assert cfg5.weather_api_key == ""
-
